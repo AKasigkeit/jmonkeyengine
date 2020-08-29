@@ -40,6 +40,7 @@ import com.jme3.export.*;
 import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.*;
+import com.jme3.renderer.Renderer;
 import com.jme3.scene.VertexBuffer.*;
 import com.jme3.scene.mesh.*;
 import com.jme3.util.*;
@@ -66,7 +67,29 @@ import java.util.ArrayList;
  *
  * @author Kirill Vainer
  */
-public class Mesh implements Savable, Cloneable, JmeCloneable {
+public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneable {
+
+    @Override
+    public void resetObject() {
+        this.id = -1;
+        this.lastState.reset();
+        setUpdateNeeded();
+    }
+
+    @Override
+    public void deleteObject(Object rendererObject) {
+        ((Renderer) rendererObject).deleteMesh(this);
+    }
+
+    @Override
+    public NativeObject createDestructableClone() {
+        return new Mesh(id);
+    }
+
+    @Override
+    public long getUniqueId() {
+        return ((long) OBJTYPE_VAO << 32) | ((long) id);
+    }
 
     /**
      * The mode of the Mesh specifies both the type of primitive represented
@@ -163,9 +186,7 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
     private IntMap<VertexBuffer> buffers = new IntMap<>();
     private VertexBuffer[] lodLevels;
     private float pointSize = 1;
-    private float lineWidth = 1;
-
-    private transient int vertexArrayID = -1;
+    private float lineWidth = 1; 
 
     private int vertCount = -1;
     private int elementCount = -1;
@@ -179,6 +200,9 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
     private Mode mode = Mode.Triangles;
 
     private SafeArrayList<MorphTarget> morphTargets;
+    
+    //keeps track of this mesh's state on the GPU
+    private LastVaoState lastState = new LastVaoState();
 
     /**
      * Creates a new mesh with no {@link VertexBuffer vertex buffers}.
@@ -187,6 +211,22 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
     }
 
     /**
+     * For creating destructible clone
+     * @param id 
+     */
+    protected Mesh(int id) {
+        super(id);
+    }
+    
+    /**
+     * Returns the LastVaoState containing the state the VAO currently has on the GPU
+     * @return this mesh's LastVaoState
+     */
+    public LastVaoState getLastState() {
+        return lastState;
+    }
+    
+    /**
      * Create a shallow clone of this Mesh. The {@link VertexBuffer vertex
      * buffers} are shared between this and the clone mesh, the rest
      * of the data is cloned.
@@ -194,24 +234,21 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
      * @return A shallow clone of the mesh
      */
     @Override
-    public Mesh clone() {
-        try {
+    public Mesh clone() {  
             Mesh clone = (Mesh) super.clone();
             clone.meshBound = meshBound.clone();
             clone.collisionTree = collisionTree != null ? collisionTree : null;
             clone.buffers = buffers.clone();
             clone.buffersList = new SafeArrayList<>(VertexBuffer.class, buffersList);
-            clone.vertexArrayID = -1;
+            clone.id = -1; //although the description states Buffers will be shared, their GL id will be -1 and their data copied with BufferUtils.clone
+            clone.lastState = new LastVaoState();
             if (elementLengths != null) {
                 clone.elementLengths = elementLengths.clone();
             }
             if (modeStart != null) {
                 clone.modeStart = modeStart.clone();
             }
-            return clone;
-        } catch (CloneNotSupportedException ex) {
-            throw new AssertionError();
-        }
+            return clone; 
     }
 
     /**
@@ -221,8 +258,7 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
      *
      * @return a deep clone of this mesh.
      */
-    public Mesh deepClone() {
-        try {
+    public Mesh deepClone() {  
             Mesh clone = (Mesh) super.clone();
             clone.meshBound = meshBound != null ? meshBound.clone() : null;
 
@@ -238,7 +274,8 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
                 clone.buffersList.add(bufClone);
             }
 
-            clone.vertexArrayID = -1;
+            clone.id = -1; 
+            clone.lastState = new LastVaoState();
             clone.vertCount = vertCount;
             clone.elementCount = elementCount;
             clone.instanceCount = instanceCount;
@@ -249,10 +286,7 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
 
             clone.elementLengths = elementLengths != null ? elementLengths.clone() : null;
             clone.modeStart = modeStart != null ? modeStart.clone() : null;
-            return clone;
-        } catch (CloneNotSupportedException ex) {
-            throw new AssertionError();
-        }
+            return clone; 
     }
 
     /**
@@ -264,7 +298,7 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
      *
      * @return A clone of the mesh for animation use.
      */
-    public Mesh cloneForAnim() {
+    public Mesh cloneForAnim() { 
         Mesh clone = clone();
         if (getBuffer(Type.BindPosePosition) != null) {
             VertexBuffer oldPos = getBuffer(Type.Position);
@@ -295,24 +329,20 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
      *  Called internally by com.jme3.util.clone.Cloner.  Do not call directly.
      */
     @Override
-    public Mesh jmeClone() {
-        try {
-            Mesh clone = (Mesh) super.clone();
-            clone.vertexArrayID = -1;
-            return clone;
-        } catch (CloneNotSupportedException ex) {
-            throw new AssertionError();
-        }
+    public Mesh jmeClone() {  
+        Mesh clone = (Mesh) super.clone();
+        return clone;
     }
 
     /**
      *  Called internally by com.jme3.util.clone.Cloner.  Do not call directly.
      */
     @Override
-    public void cloneFields(Cloner cloner, Object original) {
+    public void cloneFields(Cloner cloner, Object original) { 
         // Probably could clone this now but it will get regenerated anyway.
         this.collisionTree = null;
 
+        this.lastState = cloner.clone(lastState);
         this.meshBound = cloner.clone(meshBound);
         this.buffersList = cloner.clone(buffersList);
         this.buffers = cloner.clone(buffers);
@@ -961,25 +991,7 @@ public class Mesh implements Savable, Cloneable, JmeCloneable {
         indices[0] = ib.get(vertIndex);
         indices[1] = ib.get(vertIndex + 1);
         indices[2] = ib.get(vertIndex + 2);
-    }
-
-    /**
-     * Returns the mesh's VAO ID. Internal use only.
-     */
-    public int getId() {
-        return vertexArrayID;
-    }
-
-    /**
-     * Sets the mesh's VAO ID. Internal use only.
-     */
-    public void setId(int id) {
-        if (vertexArrayID != -1) {
-            throw new IllegalStateException("ID has already been set.");
-        }
-
-        vertexArrayID = id;
-    }
+    } 
 
     /**
      * Generates a collision tree for the mesh.

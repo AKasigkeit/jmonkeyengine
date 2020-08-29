@@ -254,4 +254,8 @@ public class NullRenderer implements Renderer {
     public int getDefaultAnisotropicFilter() {
         return 0;
     }
+
+    @Override
+    public void deleteMesh(Mesh mesh) {
+    }
 }

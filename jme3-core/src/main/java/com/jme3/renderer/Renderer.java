@@ -289,6 +289,14 @@ public interface Renderer {
     public void deleteBuffer(BufferObject bo);
 
     /**
+     * Deletes the specified mesh (state of vertexbuffers and index buffer)
+     * from the GPU.
+     * 
+     * @param mesh the mesh to delete
+     */
+    public void deleteMesh(Mesh mesh);
+    
+    /**
      * Renders <code>count</code> meshes, with the geometry data supplied and
      * per-instance data supplied.
      * The shader which is currently set with <code>setShader</code> is
