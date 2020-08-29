@@ -238,8 +238,9 @@ public final class SinglePassAndImageBasedLightingLogic extends DefaultTechnique
                 //setVector4InArray(lightProbe.getPosition().x, lightProbe.getPosition().y, lightProbe.getPosition().z, 1f / area.getRadius() + lightProbe.getNbMipMaps(), 0);
         shCoeffs.setValue(VarType.Vector3Array, lightProbe.getShCoeffs());
         //assigning new texture indexes
-        int pemUnit = lastTexUnit++;
-        rm.getRenderer().setTexture(pemUnit, lightProbe.getPrefilteredEnvMap());
+        //int pemUnit = lastTexUnit++;
+        //rm.getRenderer().setTexture(pemUnit, lightProbe.getPrefilteredEnvMap());
+        int pemUnit = rm.getRenderer().setTexture(lightProbe.getPrefilteredEnvMap());
         lightProbePemMap.setValue(VarType.Int, pemUnit);
         return lastTexUnit;
     }

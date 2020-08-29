@@ -789,7 +789,7 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
         sortingId = -1;
     }
 
-    private int applyOverrides(Renderer renderer, Shader shader, SafeArrayList<MatParamOverride> overrides, int unit) {
+    private void applyOverrides(Renderer renderer, Shader shader, SafeArrayList<MatParamOverride> overrides) {
         for (MatParamOverride override : overrides.getArray()) {
             VarType type = override.getVarType();
 
@@ -803,9 +803,8 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
 
             if (override.getValue() != null) {
                 if (type.isTextureType()) {
-                    renderer.setTexture(unit, (Texture) override.getValue());
+                    int unit = renderer.setTexture((Texture) override.getValue());
                     uniform.setValue(VarType.Int, unit);
-                    unit++;
                 } else {
                     uniform.setValue(type, override.getValue());
                 }
@@ -813,18 +812,17 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
                 uniform.clearValue();
             }
         }
-        return unit;
     }
 
-    private int updateShaderMaterialParameters(Renderer renderer, Shader shader,
+    private void updateShaderMaterialParameters(Renderer renderer, Shader shader,
                                                SafeArrayList<MatParamOverride> worldOverrides, SafeArrayList<MatParamOverride> forcedOverrides) {
 
-        int unit = 0;
+        //int unit = 0; //no longer used as the renderer keeps track of which unit is the best one
         if (worldOverrides != null) {
-            unit = applyOverrides(renderer, shader, worldOverrides, unit);
+            applyOverrides(renderer, shader, worldOverrides);
         }
         if (forcedOverrides != null) {
-            unit = applyOverrides(renderer, shader, forcedOverrides, unit);
+            applyOverrides(renderer, shader, forcedOverrides);
         }
 
         for (int i = 0; i < paramValues.size(); i++) {
@@ -845,9 +843,10 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
                 }
 
                 if (type.isTextureType()) {
-                    renderer.setTexture(unit, (Texture) param.getValue());
+                    int unit = renderer.setTexture((Texture) param.getValue());
+                    //renderer.setTexture(unit, (Texture) param.getValue());
                     uniform.setValue(VarType.Int, unit);
-                    unit++;
+                    //unit++;
                 } else {
                     uniform.setValue(type, param.getValue());
                 }
@@ -855,7 +854,7 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
         }
 
         //TODO HACKY HACK remove this when texture unit is handled by the uniform.
-        return unit;
+        //UPDATE: no longer needed to return any unit
     }
 
     /**
@@ -1020,13 +1019,13 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
         renderManager.updateUniformBindings(shader);
         
         // Set material parameters
-        int unit = updateShaderMaterialParameters(renderer, shader, overrides, renderManager.getForcedMatParams());
+        updateShaderMaterialParameters(renderer, shader, overrides, renderManager.getForcedMatParams());
 
         // Clear any uniforms not changed by material.
         resetUniformsNotSetByCurrent(shader);
         
         // Delegate rendering to the technique
-        technique.render(renderManager, shader, geometry, lights, unit);
+        technique.render(renderManager, shader, geometry, lights, 0); //provide 0 as unit, so the signature doesnt have to change TODO maybe change signature
     }
 
     /**

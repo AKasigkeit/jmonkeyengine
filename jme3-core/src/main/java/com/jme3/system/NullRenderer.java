@@ -165,6 +165,11 @@ public class NullRenderer implements Renderer {
     }
 
     @Override
+    public int setTexture(Texture tex) {
+        return 0;
+    }
+
+    @Override
     public void modifyTexture(Texture tex, Image pixels, int x, int y) {
     }
 

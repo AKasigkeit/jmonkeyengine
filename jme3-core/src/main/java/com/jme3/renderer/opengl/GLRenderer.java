@@ -39,6 +39,7 @@ import com.jme3.material.RenderState.TestFunction;
 import com.jme3.math.*;
 import com.jme3.opencl.OpenCLObjectManager;
 import com.jme3.renderer.*;
+import com.jme3.renderer.RenderContext.TextureBinding;
 import com.jme3.scene.LastVaoState;
 import com.jme3.scene.LastVaoState.VertexAttributePointer;
 import com.jme3.scene.Mesh;
@@ -2379,13 +2380,14 @@ public final class GLRenderer implements Renderer {
             gl.glActiveTexture(GL.GL_TEXTURE0 + unit);
             context.boundTextureUnit = unit;
         }
-        if (context.boundTextures[unit] != img) {
+        if (context.boundTextures[unit].image != img) {
             gl.glBindTexture(target, img.getId());
-            context.boundTextures[unit] = img;
+            context.boundTextures[unit].image = img;
             statistics.onTextureUse(img, true);
         } else {
             statistics.onTextureUse(img, false);
         }
+        context.boundTextures[unit].update = context.nextTextureBindingNumber++;
     }
     
     /**
@@ -2397,17 +2399,18 @@ public final class GLRenderer implements Renderer {
      * @param unit At what unit to bind the texture.
      */
     private void bindTextureOnly(int target, Image img, int unit) {
-        if (context.boundTextures[unit] != img) {
+        if (context.boundTextures[unit].image != img) {
             if (context.boundTextureUnit != unit) {
                 gl.glActiveTexture(GL.GL_TEXTURE0 + unit);
                 context.boundTextureUnit = unit;
             }
             gl.glBindTexture(target, img.getId());
-            context.boundTextures[unit] = img;
+            context.boundTextures[unit].image = img;
             statistics.onTextureUse(img, true);
         } else {
             statistics.onTextureUse(img, false);
         }
+        context.boundTextures[unit].update = context.nextTextureBindingNumber++;
     }
     
     /**
@@ -2547,9 +2550,42 @@ public final class GLRenderer implements Renderer {
 
         img.clearUpdateNeeded();
     }
+    
+    private int getPreferredTextureUnit(Texture tex) {
+        int unit = -1;
+        int lowest = Integer.MAX_VALUE;
+        int lowestIndex = -1;
+        
+        for (int i = 0; i < context.boundTextures.length; i++) {
+            TextureBinding texBinding = context.boundTextures[i];
+            if (texBinding.image == tex.getImage()) {
+                unit = i;
+                break;
+            } else if (texBinding.update < lowest) {
+                lowest = texBinding.update;
+                lowestIndex = i;
+            }
+        }
+        if (unit == -1) {
+            return lowestIndex;
+        } 
+        return unit;
+    }
+    
+    @Override
+    public int setTexture(Texture tex) {
+        int unit = getPreferredTextureUnit(tex);
+        setTextureInternally(unit, tex);
+        return unit;
+    }
 
     @Override
     public void setTexture(int unit, Texture tex) {
+        System.out.println("forcefully setting a texture to unit: "+unit);
+        setTextureInternally(unit, tex);
+    }
+ 
+    private void setTextureInternally(int unit, Texture tex) {
         Image image = tex.getImage();
         if (image.isUpdateNeeded() || (image.isGeneratedMipmapsRequired() && !image.isMipmapsGenerated())) {
             // Check NPOT requirements

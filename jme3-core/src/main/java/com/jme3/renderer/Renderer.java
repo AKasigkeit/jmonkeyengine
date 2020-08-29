@@ -242,6 +242,14 @@ public interface Renderer {
      * Sets the texture to use for the given texture unit.
      */
     public void setTexture(int unit, Texture tex);
+    
+    /**
+     * Sets the texture to use for the most appropriate texture unit.
+     * 
+     * @param tex the texture to bind
+     * @return the unit it was bound to
+     */
+    public int setTexture(Texture tex);
 
     /**
      * Modify the given Texture with the given Image. 

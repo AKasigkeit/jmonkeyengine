@@ -219,7 +219,14 @@ public class RenderContext {
      *
      * @see Renderer#setTexture(int, com.jme3.texture.Texture)
      */
-    public final Image[] boundTextures = new Image[16];
+    public final TextureBinding[] boundTextures;
+    
+    public int nextTextureBindingNumber = 0;
+    
+    public static class TextureBinding {
+        public Image image = null;
+        public int update = 0;
+    }
 
     /**
      * IDList for texture units
@@ -275,6 +282,11 @@ public class RenderContext {
     public ColorRGBA clearColor = new ColorRGBA(0, 0, 0, 0);
 
     public RenderContext() {
+        boundTextures = new TextureBinding[16];
+        for (int i = 0; i < boundTextures.length; i++) {
+            boundTextures[i] = new TextureBinding();
+        }
+        
         init();
     }
 
