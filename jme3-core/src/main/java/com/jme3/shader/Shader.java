@@ -96,7 +96,13 @@ public final class Shader extends NativeObject {
          * Controls tessellation transform (e.g similar to the vertex shader, but
          * required to mix inputs manual)
          */
-        TessellationEvaluation("tseval");
+        TessellationEvaluation("tseval"),
+        /**
+         * Used for GPGPU calculations, not part of the actual rendering pipeline. Useful for 
+         * ParticleSystems, PostProcessing Effects, any kind of problem that can make use of the
+         * massive parallel computing power of modern GPUs
+         */
+        Compute("comp");
 
         private String extension;
         

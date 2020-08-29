@@ -82,6 +82,8 @@ public interface GL3 extends GL2 {
     public static final int GL_RGB16I = 36233;
     public static final int GL_RGBA8I = 36238;
     public static final int GL_RGB8I = 36239;
+    public static final int GL_RGBA16F = 34842;
+    public static final int GL_RGBA32F = 34836;
     public static final int GL_RED_INTEGER = 36244;
     public static final int GL_RG_INTEGER = 33320;
     public static final int GL_RGB_INTEGER = 36248;
@@ -215,4 +217,21 @@ public interface GL3 extends GL2 {
      *                            uniformBlockIndex within program.
      */
     public void glUniformBlockBinding(int program, int uniformBlockIndex, int uniformBlockBinding);
+    
+    
+    
+    /**
+     * <p><a target="_blank" href="http://docs.gl/gl4/glGet">Reference Page</a></p>
+     * <p>
+     * Returns the current integer value of the specified state variable.
+     * <p>
+     * <p><b>LWJGL note</b>: The state that corresponds to the state variable may be a single value or an array of values. In the case of an array of values,
+     * LWJGL will <b>not</b> validate if {@code params} has enough space to store that array. Doing so would introduce significant overhead, as the
+     * OpenGL state variables are too many. It is the user's responsibility to avoid JVM crashes by ensuring enough space for the returned values.</p>
+     *
+     * @param pname  the state variable.
+     * @param index the index
+     * @param params a scalar or buffer in which to place the returned data.
+     */
+    public void glGetInteger(int pname, int index, IntBuffer params);
 }

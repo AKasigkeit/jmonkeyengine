@@ -135,6 +135,7 @@ public interface GL {
     public static final int GL_REPEAT = 0x2901;
     public static final int GL_REPLACE = 0x1E01;
     public static final int GL_RGB = 0x1907;
+    public static final int GL_RGB10_A2 = 32857;
     public static final int GL_RGB565 = 0x8D62;
     public static final int GL_RGB5_A1 = 0x8057;
     public static final int GL_RGBA = 0x1908;
@@ -198,6 +199,7 @@ public interface GL {
     public static final int GL_READ_ONLY = 0x88b8;
     public static final int GL_WRITE_ONLY = 0x88b9;
     public static final int GL_READ_WRITE = 0x88ba;
+    
 
     public void resetStats();
 

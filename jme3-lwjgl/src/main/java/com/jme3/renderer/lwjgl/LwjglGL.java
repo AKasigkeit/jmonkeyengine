@@ -623,4 +623,9 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     public void glMemoryBarrier(int bits) {
         GL42.glMemoryBarrier(bits);
     }
+
+    @Override
+    public void glGetInteger(int pname, int index, IntBuffer params) {
+        GL30.glGetInteger(pname, index, params);
+    }
 }

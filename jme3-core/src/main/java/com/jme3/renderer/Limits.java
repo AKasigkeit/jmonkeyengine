@@ -51,7 +51,6 @@ public enum Limits {
      */
     FragmentTextureUnits,
     CombinedTextureUnits,
-    ComputeImageUnits,
     ImageUnits,
     FragmentUniformVectors,
     VertexUniformVectors,
@@ -81,4 +80,19 @@ public enum Limits {
     ShaderStorageBufferObjectMaxTessEvaluationBlocks,
     ShaderStorageBufferObjectMaxComputeBlocks,
     ShaderStorageBufferObjectMaxCombineBlocks,
+    
+    //ComputeShader
+    ComputeShaderMaxImageUnits,
+    ComputeShaderMaxTextureUnits,
+    ComputeShaderMaxUniformBlocks,
+    ComputeShaderMaxSharedMemory,
+    ComputeShaderMaxUniformComponents, //at least 1024
+    ComputeShaderMaxAtomicCounterBuffers,
+    ComputeShaderMaxWorkGroupInvocations, //total num of invoc per group, min 1024
+    ComputeShaderMaxWorkGroupCountX, 
+    ComputeShaderMaxWorkGroupCountY, 
+    ComputeShaderMaxWorkGroupCountZ,
+    ComputeShaderMaxWorkGroupSizeX,
+    ComputeShaderMaxWorkGroupSizeY,
+    ComputeShaderMaxWorkGroupSizeZ, 
 }

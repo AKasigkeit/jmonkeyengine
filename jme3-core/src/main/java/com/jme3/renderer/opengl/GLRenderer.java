@@ -520,7 +520,19 @@ public final class GLRenderer implements Renderer {
         
         if (hasExtension("GL_ARB_compute_shader") || caps.contains(Caps.OpenGL43)) {
             caps.add(Caps.ComputeShader);
-            limits.put(Limits.ComputeImageUnits, getInteger(GL4.GL_MAX_COMPUTE_IMAGE_UNIFORMS));
+            limits.put(Limits.ComputeShaderMaxImageUnits, getInteger(GL4.GL_MAX_COMPUTE_IMAGE_UNIFORMS)); 
+            limits.put(Limits.ComputeShaderMaxTextureUnits, getInteger(GL4.GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS));
+            limits.put(Limits.ComputeShaderMaxUniformBlocks, getInteger(GL4.GL_MAX_COMPUTE_UNIFORM_BLOCKS));
+            limits.put(Limits.ComputeShaderMaxSharedMemory, getInteger(GL4.GL_MAX_COMPUTE_SHARED_MEMORY_SIZE));
+            limits.put(Limits.ComputeShaderMaxUniformComponents, getInteger(GL4.GL_MAX_COMPUTE_UNIFORM_COMPONENTS));
+            limits.put(Limits.ComputeShaderMaxAtomicCounterBuffers, getInteger(GL4.GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS));
+            limits.put(Limits.ComputeShaderMaxWorkGroupInvocations, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS));
+            limits.put(Limits.ComputeShaderMaxWorkGroupCountX, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0));
+            limits.put(Limits.ComputeShaderMaxWorkGroupCountY, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1));
+            limits.put(Limits.ComputeShaderMaxWorkGroupCountZ, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2));
+            limits.put(Limits.ComputeShaderMaxWorkGroupSizeX, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0));
+            limits.put(Limits.ComputeShaderMaxWorkGroupSizeY, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1));
+            limits.put(Limits.ComputeShaderMaxWorkGroupSizeZ, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2));
         }
         
         if (caps.contains(Caps.OpenGL42)) {
@@ -615,6 +627,12 @@ public final class GLRenderer implements Renderer {
         return intBuf16.get(0);
     }
 
+    private int getInteger(int en, int idx) {
+        intBuf16.clear();
+        gl3.glGetInteger(en, idx, intBuf16);
+        return intBuf16.get(0);
+    }
+
     private boolean getBoolean(int en) {
         gl.glGetBoolean(en, nameBuf);
         return nameBuf.get(0) != (byte)0;
@@ -629,7 +647,7 @@ public final class GLRenderer implements Renderer {
         int maxVertTextures = limits.get(Limits.VertexTextureUnits);
         int maxCombTextures = limits.get(Limits.CombinedTextureUnits);
         int maxImageUnits = limits.getOrDefault(Limits.ImageUnits, 0);
-        int maxCompImages = limits.getOrDefault(Limits.ComputeImageUnits, 0);
+        int maxCompImages = limits.getOrDefault(Limits.ComputeShaderMaxImageUnits, 0);
         
         int maxTextures = Math.min(Math.min(maxFragTextures, maxVertTextures), maxCombTextures);
         int maxImages = Math.min(maxImageUnits, maxCompImages);
