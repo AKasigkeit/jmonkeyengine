@@ -31,6 +31,8 @@
  */
 package com.jme3.renderer;
 
+import com.jme3.compute.ComputeShader;
+import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.scene.Mesh;
@@ -472,5 +474,39 @@ public interface Renderer {
      *
      */
     public int getDefaultAnisotropicFilter();
+    
+    /**
+     * Sets the texture to use for the most appropriate image unit.
+     * 
+     * @param tex the texture to bind 
+     * @param layer the layer of the texture to bind or -1 to bind all layers
+     * @param level the mipmap level to bind
+     * @param access the access pattern (one of Access.WriteOnly, Access.ReadOnly or Access.ReadWrite)
+     * @return the image unit the texture was bound to
+     */
+    public int setImage(Texture tex, int layer, int level, Texture.Access access);
+    
+    /**
+     * Runs the specified ComputeShader.
+     * @param shader the shader to run
+     * @param x work group count in x dimension
+     * @param y work group count in y dimension
+     * @param z work group count in z dimension 
+     */
+    public void runComputeShader(ComputeShader shader, int x, int y, int z);
+    
+    /**
+     * Returns the local work group size of the provided ComputeShader.
+     * @param shader the shader to query local work group size of
+     * @param store the array to store the result in, length must be >= 3
+     */
+    public void getLocalWorkGroupSize(ComputeShader shader, int[] store);
+    
+    /**
+     * Sets the specified memory barrier.
+     * 
+     * @param barrierBits the barriers to set 
+     */
+    public void memoryBarrier(MemoryBarrierBits barrierBits);
 
 }

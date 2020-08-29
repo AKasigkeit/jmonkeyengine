@@ -31,6 +31,8 @@
  */
 package com.jme3.renderer.opengl;
 
+import com.jme3.compute.ComputeShader;
+import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.RenderState;
 import com.jme3.material.RenderState.BlendFunc;
 import com.jme3.material.RenderState.BlendMode;
@@ -284,8 +286,9 @@ public final class GLRenderer implements Renderer {
 
         // Fix issue in TestRenderToMemory when GL.GL_FRONT is the main
         // buffer being used.
-        context.initialDrawBuf = getInteger(GL2.GL_DRAW_BUFFER);
-        context.initialReadBuf = getInteger(GL2.GL_READ_BUFFER);
+        // UPDATE: moved to initialized() method because context is not yet created at this time
+        //context.initialDrawBuf = getInteger(GL2.GL_DRAW_BUFFER);
+        //context.initialReadBuf = getInteger(GL2.GL_READ_BUFFER);
 
         // XXX: This has to be GL.GL_BACK for canvas on Mac
         // Since initialDrawBuf is GL.GL_FRONT for pbuffer, gotta
@@ -514,6 +517,15 @@ public final class GLRenderer implements Renderer {
         if (hasExtension("GL_OES_tessellation_shader") || hasExtension("GL_EXT_tessellation_shader")) {
             caps.add(Caps.TesselationShader);
         }
+        
+        if (hasExtension("GL_ARB_compute_shader") || caps.contains(Caps.OpenGL43)) {
+            caps.add(Caps.ComputeShader);
+            limits.put(Limits.ComputeImageUnits, getInteger(GL4.GL_MAX_COMPUTE_IMAGE_UNIFORMS));
+        }
+        
+        if (caps.contains(Caps.OpenGL42)) {
+            limits.put(Limits.ImageUnits, getInteger(GL4.GL_MAX_IMAGE_UNITS));
+        }  
 
         if (hasExtension("GL_ARB_shader_storage_buffer_object")) {
             caps.add(Caps.ShaderStorageBufferObject);
@@ -589,7 +601,7 @@ public final class GLRenderer implements Renderer {
     }
 
     private void loadCapabilities() {
-        if (gl2 != null && !(gl instanceof GLES_30)) {
+        if (gl2 != null && !(gl instanceof GLES_30)) { 
             loadCapabilitiesGL2();
         } else {
             loadCapabilitiesES();
@@ -616,9 +628,26 @@ public final class GLRenderer implements Renderer {
         int maxFragTextures = limits.get(Limits.FragmentTextureUnits);
         int maxVertTextures = limits.get(Limits.VertexTextureUnits);
         int maxCombTextures = limits.get(Limits.CombinedTextureUnits);
-        int maxTextures = Math.min(Math.min(maxFragTextures, maxVertTextures), maxCombTextures);
+        int maxImageUnits = limits.getOrDefault(Limits.ImageUnits, 0);
+        int maxCompImages = limits.getOrDefault(Limits.ComputeImageUnits, 0);
         
-        context = new RenderContext(maxTextures);
+        int maxTextures = Math.min(Math.min(maxFragTextures, maxVertTextures), maxCombTextures);
+        int maxImages = Math.min(maxImageUnits, maxCompImages);
+        
+        System.out.println("maxVertAttribs: "+maxVertAttribs);
+        System.out.println("maxFragTextures: "+maxFragTextures);
+        System.out.println("maxVertTextures: "+maxVertTextures);
+        System.out.println("maxCombTextures: "+maxCombTextures);
+        System.out.println("maxImageUnits: "+maxImageUnits);
+        System.out.println("maxCompImages: "+maxCompImages);
+        System.out.println(" -> maxTextures: "+maxTextures);
+        System.out.println(" -> maxImages: "+maxImages);
+        
+        context = new RenderContext(maxTextures, maxImages); 
+        if (gl2 != null && !(gl instanceof GLES_30)) {
+            context.initialDrawBuf = getInteger(GL2.GL_DRAW_BUFFER);
+            context.initialReadBuf = getInteger(GL2.GL_READ_BUFFER);
+        }
         LastVaoState.initialize(maxVertAttribs); 
         
 
@@ -2558,6 +2587,19 @@ public final class GLRenderer implements Renderer {
         img.clearUpdateNeeded();
     }
     
+    private int getPreferredImageUnit(Texture tex, int layer, int level, int access) {
+        int unit = 0;
+        
+        return unit;
+    }
+    
+    @Override
+    public int setImage(Texture tex, int layer, int level, Texture.Access access) { 
+        int unit = getPreferredImageUnit(tex, layer, level, access.getAccessBits());
+        
+        return unit;
+    }
+    
     private int getPreferredTextureUnit(Texture tex) {
         int unit = -1;
         int lowest = Integer.MAX_VALUE;
@@ -3469,5 +3511,17 @@ public final class GLRenderer implements Renderer {
     @Override
     public int getDefaultAnisotropicFilter() {
         return this.defaultAnisotropicFilter;
+    }
+     
+    @Override
+    public void runComputeShader(ComputeShader shader, int x, int y, int z) { 
+    }
+
+    @Override
+    public void getLocalWorkGroupSize(ComputeShader shader, int[] store) {  
+    }
+
+    @Override
+    public void memoryBarrier(MemoryBarrierBits barrierBits) { 
     }
 }

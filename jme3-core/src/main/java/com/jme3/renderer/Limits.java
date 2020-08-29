@@ -51,6 +51,8 @@ public enum Limits {
      */
     FragmentTextureUnits,
     CombinedTextureUnits,
+    ComputeImageUnits,
+    ImageUnits,
     FragmentUniformVectors,
     VertexUniformVectors,
     VertexAttributes,

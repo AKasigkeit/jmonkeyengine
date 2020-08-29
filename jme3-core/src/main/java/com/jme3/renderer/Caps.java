@@ -441,7 +441,12 @@ public enum Caps {
     Depth24,     
 
     
-    UnpackRowLength
+    UnpackRowLength,
+    
+    /**
+     * Implementation provides access to ComputeShaders
+     */
+    ComputeShader
     ;
 
     /**

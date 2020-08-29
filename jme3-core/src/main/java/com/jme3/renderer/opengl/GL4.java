@@ -37,6 +37,45 @@ package com.jme3.renderer.opengl;
  * @author Kirill Vainer
  */
 public interface GL4 extends GL3 {
+    
+    
+    //memory barrier bits
+    public static final int GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT = 1;
+    public static final int GL_ELEMENT_ARRAY_BARRIER_BIT = 2;
+    public static final int GL_UNIFORM_BARRIER_BIT = 4;
+    public static final int GL_TEXTURE_FETCH_BARRIER_BIT = 8;
+    public static final int GL_SHADER_IMAGE_ACCESS_BARRIER_BIT = 32;
+    public static final int GL_COMMAND_BARRIER_BIT = 64;
+    public static final int GL_PIXEL_BUFFER_BARRIER_BIT = 128;
+    public static final int GL_TEXTURE_UPDATE_BARRIER_BIT = 256;
+    public static final int GL_BUFFER_UPDATE_BARRIER_BIT = 512;
+    public static final int GL_FRAMEBUFFER_BARRIER_BIT = 1024;
+    public static final int GL_TRANSFORM_FEEDBACK_BARRIER_BIT = 2048;
+    public static final int GL_ATOMIC_COUNTER_BARRIER_BIT = 4096;
+    public static final int GL_ALL_BARRIER_BITS = -1;
+    public static final int GL_QUERY_BUFFER_BARRIER_BIT = 32768;
+    public static final int GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT = 16384;
+    public static final int GL_SHADER_STORAGE_BARRIER_BIT = 8192;
+     
+    //compute shader constants
+    public static final int GL_COMPUTE_SHADER = 0x91B9;
+    public static final int GL_COMPUTE_WORK_GROUP_SIZE = 0x8267; 
+    public static final int GL_MAX_COMPUTE_UNIFORM_BLOCKS = 37307;
+    public static final int GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS = 37308;
+    public static final int GL_MAX_COMPUTE_IMAGE_UNIFORMS = 37309;
+    public static final int GL_MAX_COMPUTE_SHARED_MEMORY_SIZE = 33378;
+    public static final int GL_MAX_COMPUTE_UNIFORM_COMPONENTS = 33379;
+    public static final int GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS = 33380;
+    public static final int GL_MAX_COMPUTE_ATOMIC_COUNTERS = 33381;
+    public static final int GL_MAX_COMBINED_COMPUTE_UNIFORM_COMPONENTS = 33382;
+    public static final int GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS = 37099;
+    public static final int GL_MAX_COMPUTE_WORK_GROUP_COUNT = 37310;
+    public static final int GL_MAX_COMPUTE_WORK_GROUP_SIZE = 37311;
+    
+    public static final int GL_MAX_IMAGE_UNITS = 36664;
+    
+    public static final int GL_MAX_TESS_EVALUATION_TEXTURE_IMAGE_UNITS = 36482;
+    public static final int GL_MAX_TESS_CONTROL_TEXTURE_IMAGE_UNITS = 36481;
 
     public static final int GL_TESS_CONTROL_SHADER = 0x8E88;
     public static final int GL_TESS_EVALUATION_SHADER = 0x8E87;
@@ -100,4 +139,30 @@ public interface GL4 extends GL3 {
      * @param storageBlockBinding The index storage block binding to associate with the specified storage block.
      */
     public void glShaderStorageBlockBinding(int program, int storageBlockIndex, int storageBlockBinding);
+    
+    /**
+     * Dispatches the currently bound ComputeShader with the specified number of work groups
+     * @param x 
+     * @param y
+     * @param z 
+     */
+    public void glDispatchCompute(int x, int y, int z);
+    
+    /**
+     * Binds an Image to an image unit
+     * @param unit the unit to bind it to
+     * @param texture the id of the texture to bind
+     * @param level the mipmaps level to bind
+     * @param layered true to bind all layers
+     * @param layer if not layered, specify layer to bind (TextureArray, Texture3D, TextureCubeMap)
+     * @param access the accesflags, writeonly, readonly or readwrite
+     * @param format the format of the image that is to be bound
+     */
+    public void glBindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format);
+    
+    /**
+     * Sets a memory barrier. -> https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml
+     * @param bits the bits specifying which barriers to set
+     */
+    public void glMemoryBarrier(int bits);
 }

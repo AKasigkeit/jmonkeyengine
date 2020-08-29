@@ -31,6 +31,8 @@
  */
 package com.jme3.system;
 
+import com.jme3.compute.ComputeShader;
+import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.light.LightList;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
@@ -262,5 +264,25 @@ public class NullRenderer implements Renderer {
 
     @Override
     public void deleteMesh(Mesh mesh) {
+    }
+
+    @Override
+    public void runComputeShader(ComputeShader shader, int x, int y, int z) { 
+    }
+
+    @Override
+    public void getLocalWorkGroupSize(ComputeShader shader, int[] store) { 
+        store[0] = 0;
+        store[1] = 0;
+        store[2] = 0;
+    }
+
+    @Override
+    public void memoryBarrier(MemoryBarrierBits barrierBits) { 
+    }
+
+    @Override
+    public int setImage(Texture tex, int layer, int level, Texture.Access access) { 
+        return 0;
     }
 }

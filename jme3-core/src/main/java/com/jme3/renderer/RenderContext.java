@@ -227,6 +227,18 @@ public class RenderContext {
         public Image image = null;
         public int update = 0;
     }
+    
+    public final ImageBinding[] boundImages;
+    
+    public int nextImageBindingNumber = 0;
+    
+    public static class ImageBinding {
+        public Image image;
+        public int level;
+        public int layer;
+        public int access;
+        public int update = 0;
+    }
 
     /**
      * IDList for texture units
@@ -282,13 +294,18 @@ public class RenderContext {
     public ColorRGBA clearColor = new ColorRGBA(0, 0, 0, 0);
 
     public RenderContext() {
-        this(16);
+        this(16, 8);
     }
     
-    public RenderContext(int maxTextures) {
+    public RenderContext(int maxTextures, int maxImages) {
         boundTextures = new TextureBinding[maxTextures];
         for (int i = 0; i < boundTextures.length; i++) {
             boundTextures[i] = new TextureBinding();
+        }
+        
+        boundImages = new ImageBinding[maxImages];
+        for (int i = 0; i < boundImages.length; i++) {
+            boundImages[i] = new ImageBinding();
         }
         
         init();
@@ -353,7 +370,13 @@ public class RenderContext {
         init();
 
         for (int i = 0; i < boundTextures.length; i++) {
-            boundTextures[i] = null;
+            boundTextures[i].image = null;
+            boundTextures[i].update = 0;
+        }
+
+        for (int i = 0; i < boundImages.length; i++) {
+            boundImages[i].image = null;
+            boundImages[i].update = 0;
         }
 
         textureIndexList.reset();

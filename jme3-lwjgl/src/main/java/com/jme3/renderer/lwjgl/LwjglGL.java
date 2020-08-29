@@ -608,4 +608,19 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     public void glUniformBlockBinding(final int program, final int uniformBlockIndex, final int uniformBlockBinding) {
         GL31.glUniformBlockBinding(program, uniformBlockIndex, uniformBlockBinding);
     }
+
+    @Override
+    public void glDispatchCompute(int x, int y, int z) {
+        GL43.glDispatchCompute(x, y, z);
+    }
+
+    @Override
+    public void glBindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
+        GL42.glBindImageTexture(unit, texture, level, layered, layer, access, format);
+    }
+
+    @Override
+    public void glMemoryBarrier(int bits) {
+        GL42.glMemoryBarrier(bits);
+    }
 }
