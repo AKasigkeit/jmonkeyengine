@@ -87,7 +87,7 @@ public final class GLRenderer implements Renderer {
     private final IntBuffer intBuf1 = BufferUtils.createIntBuffer(1);
     private final IntBuffer intBuf16 = BufferUtils.createIntBuffer(16);
     private final FloatBuffer floatBuf16 = BufferUtils.createFloatBuffer(16);
-    private final RenderContext context = new RenderContext();
+    private RenderContext context = null; //now initialized after limits have been read to allow for implementation specific sizes
     private final NativeObjectManager objManager = new NativeObjectManager();
     private final EnumSet<Caps> caps = EnumSet.noneOf(Caps.class);
     private final EnumMap<Limits, Integer> limits = new EnumMap<Limits, Integer>(Limits.class);
@@ -303,6 +303,7 @@ public final class GLRenderer implements Renderer {
         }
 
         limits.put(Limits.FragmentTextureUnits, getInteger(GL.GL_MAX_TEXTURE_IMAGE_UNITS));
+        limits.put(Limits.CombinedTextureUnits, getInteger(GL2.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS));
 
         if (caps.contains(Caps.OpenGLES20)) {
             limits.put(Limits.FragmentUniformVectors, getInteger(GL.GL_MAX_FRAGMENT_UNIFORM_VECTORS));
@@ -609,11 +610,17 @@ public final class GLRenderer implements Renderer {
 
     @SuppressWarnings("fallthrough")
     @Override
-    public void initialize() {
-        int maxVertAttribs = getInteger(GL.GL_MAX_VERTEX_ATTRIBS);
-        LastVaoState.initialize(maxVertAttribs);
-        
+    public void initialize() { 
         loadCapabilities();
+        int maxVertAttribs = limits.get(Limits.VertexAttributes);
+        int maxFragTextures = limits.get(Limits.FragmentTextureUnits);
+        int maxVertTextures = limits.get(Limits.VertexTextureUnits);
+        int maxCombTextures = limits.get(Limits.CombinedTextureUnits);
+        int maxTextures = Math.min(Math.min(maxFragTextures, maxVertTextures), maxCombTextures);
+        
+        context = new RenderContext(maxTextures);
+        LastVaoState.initialize(maxVertAttribs); 
+        
 
         // Initialize default state..
         gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);

@@ -282,7 +282,11 @@ public class RenderContext {
     public ColorRGBA clearColor = new ColorRGBA(0, 0, 0, 0);
 
     public RenderContext() {
-        boundTextures = new TextureBinding[16];
+        this(16);
+    }
+    
+    public RenderContext(int maxTextures) {
+        boundTextures = new TextureBinding[maxTextures];
         for (int i = 0; i < boundTextures.length; i++) {
             boundTextures[i] = new TextureBinding();
         }

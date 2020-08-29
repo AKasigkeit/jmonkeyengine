@@ -50,6 +50,7 @@ public enum Limits {
      * be used in the fragment shader.
      */
     FragmentTextureUnits,
+    CombinedTextureUnits,
     FragmentUniformVectors,
     VertexUniformVectors,
     VertexAttributes,
