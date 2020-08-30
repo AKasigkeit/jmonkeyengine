@@ -9,12 +9,6 @@ import com.jme3.asset.AssetManager;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.Limits;
 import com.jme3.renderer.Renderer;
-import com.jme3.renderer.opengl.GL2;
-import com.jme3.renderer.opengl.GL3;
-import com.jme3.renderer.opengl.GL4;
-import com.jme3.texture.Image;
-import com.jme3.util.BufferUtils;
-import java.nio.IntBuffer;
 import java.util.Arrays;
 
 /**
@@ -23,17 +17,16 @@ import java.util.Arrays;
  */
 public class ComputeShaderFactory {
 
-    public static class ComputeShaderNotAvailableException extends Exception {
-
-        private ComputeShaderNotAvailableException() {
-            super("ComputeShaders are not supported by the hardware");
-        }
-
-    }
-
-    public static ComputeShaderFactory create(Renderer renderer) throws ComputeShaderNotAvailableException {
+    /**
+     * Creates a new ComputeShaderFactory. Will return null is compute shaders
+     * are not supported by the hardware.
+     *
+     * @param renderer the renderer needed to access the underlying system
+     * @return the new ComputeShaderFactory
+     */
+    public static ComputeShaderFactory create(Renderer renderer) {
         if (!renderer.getCaps().contains(Caps.ComputeShader)) {
-            throw new ComputeShaderNotAvailableException();
+            return null;
         }
         return new ComputeShaderFactory(renderer);
     }
@@ -76,9 +69,7 @@ public class ComputeShaderFactory {
         return new ComputeShader(this, sourceCode, language, null);
     }
 
-    protected void run(ComputeShader computeShader, int x, int y, int z, MemoryBarrierBits bits) {
-        //prepareShader(computeShader);
-
+    protected void run(ComputeShader computeShader, int x, int y, int z, MemoryBarrierBits bits) { 
         RENDERER.runComputeShader(computeShader, x, y, z);
         RENDERER.memoryBarrier(bits);
     }
@@ -89,71 +80,6 @@ public class ComputeShaderFactory {
 
     protected void getLocalWorkGroupSize(ComputeShader shader, int[] store) {
         RENDERER.getLocalWorkGroupSize(shader, store);
-    }
-
-    protected int getFormat(Image.Format f) {
-        switch (f) {
-            case RGBA8:
-                return GL3.GL_RGBA8I;
-            // R ints (signed and unsigned)
-            case R8I:
-                return GL3.GL_R8I;
-            case R8UI:
-                return GL3.GL_R8UI;
-            case R16I:
-                return GL3.GL_R16I;
-            case R16UI:
-                return GL3.GL_R16UI;
-            case R32I:
-                return GL3.GL_R32I;
-            case R32UI:
-                return GL3.GL_R32UI;
-            // R and G ints (signed and unsigned)
-            case RG8I:
-                return GL3.GL_RG8I;
-            case RG8UI:
-                return GL3.GL_RG8UI;
-            case RG16I:
-                return GL3.GL_RG16I;
-            case RG16UI:
-                return GL3.GL_RG16UI;
-            case RG32I:
-                return GL3.GL_RG32I;
-            case RG32UI:
-                return GL3.GL_RG32UI;
-            // R, G, B and A ints (signed and unsigned)
-            case RGBA8I:
-                return GL3.GL_RGBA8I;
-            case RGBA8UI:
-                return GL3.GL_RGBA8UI;
-            case RGBA16I:
-                return GL3.GL_RGBA16I;
-            case RGBA16UI:
-                return GL3.GL_RGBA16UI;
-            case RGBA32I:
-                return GL3.GL_RGBA32I;
-            case RGBA32UI:
-                return GL3.GL_RGBA32UI;
-            // floats 
-            case R16F:
-                return GL3.GL_R16F;
-            case R32F:
-                return GL3.GL_R32F;
-            case RG16F:
-                return GL3.GL_RG16F;
-            case RG32F:
-                return GL3.GL_RG32F;
-            case RGBA16F:
-                return GL3.GL_RGBA16F;
-            case RGBA32F:
-                return GL3.GL_RGBA32F;
-            // rest
-            case RGB10A2:
-                return GL2.GL_RGB10_A2;
-
-            default:
-                throw new IllegalArgumentException("unsupported image format: " + f);
-        }
     }
 
     public int[] getMaxLocalSize1D() {

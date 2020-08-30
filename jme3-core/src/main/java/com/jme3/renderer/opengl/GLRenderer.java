@@ -33,6 +33,8 @@ package com.jme3.renderer.opengl;
 
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
+import com.jme3.compute.TexMatParam;
+import com.jme3.material.MatParam;
 import com.jme3.material.RenderState;
 import com.jme3.material.RenderState.BlendFunc;
 import com.jme3.material.RenderState.BlendMode;
@@ -41,6 +43,7 @@ import com.jme3.material.RenderState.TestFunction;
 import com.jme3.math.*;
 import com.jme3.opencl.OpenCLObjectManager;
 import com.jme3.renderer.*;
+import com.jme3.renderer.RenderContext.ImageBinding;
 import com.jme3.renderer.RenderContext.TextureBinding;
 import com.jme3.scene.LastVaoState;
 import com.jme3.scene.LastVaoState.VertexAttributePointer;
@@ -679,6 +682,7 @@ public final class GLRenderer implements Renderer {
 
         if (caps.contains(Caps.CoreProfile)) {
             // Core Profile requires VAO to be bound.
+            intBuf16.position(0).limit(1);
             gl3.glGenVertexArrays(intBuf16);
             int vaoId = intBuf16.get(0);
             gl3.glBindVertexArray(vaoId);
@@ -1426,6 +1430,8 @@ public final class GLRenderer implements Renderer {
                 return GL4.GL_TESS_CONTROL_SHADER;
             case TessellationEvaluation:
                 return GL4.GL_TESS_EVALUATION_SHADER;
+            case Compute:
+                return GL4.GL_COMPUTE_SHADER;
             default:
                 throw new UnsupportedOperationException("Unrecognized shader type.");
         }
@@ -2605,17 +2611,116 @@ public final class GLRenderer implements Renderer {
         img.clearUpdateNeeded();
     }
     
-    private int getPreferredImageUnit(Texture tex, int layer, int level, int access) {
+    private int getPreferredImageUnit(Texture tex) {
         int unit = 0;
+        int lowest = Integer.MAX_VALUE;
+        int lowestIndex = -1;
         
-        return unit;
+        for (int i = 0; i < context.boundImages.length; i++) {
+            ImageBinding texBinding = context.boundImages[i];
+            if (texBinding.image == tex.getImage()) {
+                unit = i;
+                break;
+            } else if (texBinding.update < lowest) {
+                lowest = texBinding.update;
+                lowestIndex = i;
+            }
+        }
+        if (unit == -1) {
+            return lowestIndex;
+        } 
+        return unit; 
     }
     
     @Override
     public int setImage(Texture tex, int layer, int level, Texture.Access access) { 
-        int unit = getPreferredImageUnit(tex, layer, level, access.getAccessBits());
+        int accessBits = access.getAccessBits();
+        int unit = getPreferredImageUnit(tex);
         
+        //make sure texture is created and updated
+        Image image = tex.getImage();
+        if (image.isUpdateNeeded() || (image.isGeneratedMipmapsRequired() && !image.isMipmapsGenerated())) {
+            updateTexImageData(image, tex.getType(), unit, false); //no need to check for non-power-of-two requirement here because images require opengl4
+        }
+        
+        //now bind it to that unit if any of the parameters differ from current state
+        ImageBinding img = context.boundImages[unit];
+        if (img.image != image || img.layer != layer || img.level != level || img.access != accessBits) {
+            int format = getFormat(image.getFormat());
+            gl4.glBindImageTexture(unit, image.getId(), level, layer < 0, layer < 0 ? 0 : layer, accessBits, format);
+            
+            img.image = image;
+            img.layer = layer;
+            img.level = level;
+            img.access = accessBits;
+        }
+        img.update = context.nextImageBindingNumber++;
         return unit;
+    }
+
+    protected int getFormat(Image.Format f) {
+        switch (f) {
+            case RGBA8:
+                return GL3.GL_RGBA8I;
+            // R ints (signed and unsigned)
+            case R8I:
+                return GL3.GL_R8I;
+            case R8UI:
+                return GL3.GL_R8UI;
+            case R16I:
+                return GL3.GL_R16I;
+            case R16UI:
+                return GL3.GL_R16UI;
+            case R32I:
+                return GL3.GL_R32I;
+            case R32UI:
+                return GL3.GL_R32UI;
+            // R and G ints (signed and unsigned)
+            case RG8I:
+                return GL3.GL_RG8I;
+            case RG8UI:
+                return GL3.GL_RG8UI;
+            case RG16I:
+                return GL3.GL_RG16I;
+            case RG16UI:
+                return GL3.GL_RG16UI;
+            case RG32I:
+                return GL3.GL_RG32I;
+            case RG32UI:
+                return GL3.GL_RG32UI;
+            // R, G, B and A ints (signed and unsigned)
+            case RGBA8I:
+                return GL3.GL_RGBA8I;
+            case RGBA8UI:
+                return GL3.GL_RGBA8UI;
+            case RGBA16I:
+                return GL3.GL_RGBA16I;
+            case RGBA16UI:
+                return GL3.GL_RGBA16UI;
+            case RGBA32I:
+                return GL3.GL_RGBA32I;
+            case RGBA32UI:
+                return GL3.GL_RGBA32UI;
+            // floats 
+            case R16F:
+                return GL3.GL_R16F;
+            case R32F:
+                return GL3.GL_R32F;
+            case RG16F:
+                return GL3.GL_RG16F;
+            case RG32F:
+                return GL3.GL_RG32F;
+            case RGBA16F:
+                return GL3.GL_RGBA16F;
+            case RGBA32F:
+                return GL3.GL_RGBA32F;
+            // rest
+            case RGB10A2:
+                return GL2.GL_RGB10_A2;
+
+            default:
+                throw new IllegalArgumentException("unsupported image format: " + f);
+        }
     }
     
     private int getPreferredTextureUnit(Texture tex) {
@@ -3530,16 +3635,114 @@ public final class GLRenderer implements Renderer {
     public int getDefaultAnisotropicFilter() {
         return this.defaultAnisotropicFilter;
     }
-     
+
+    private void prepareShader(ComputeShader computeShader) {
+        Shader shader = computeShader.getShader();
+        
+        if (shader.isUpdateNeeded()) {
+            updateShaderData(shader);
+        }
+        ListMap<String, Uniform> uniMap = shader.getUniformMap();
+        ListMap<String, MatParam> uniforms = computeShader.getUniforms();
+        ListMap<String, TexMatParam> textures = computeShader.getTextures();
+        ListMap<String, MatParam> buffers = computeShader.getBuffers();
+
+        //System.out.println("clearing " + uniMap.size() + " uniforms currently tracked by the shader LETS HOPE ITS 0");
+        //clear all uniforms currently tracked by the shader
+        int size = uniMap.size();
+        for (int i = 0; i < size; i++) {
+            uniMap.getValue(i).clearSetByCurrentMaterial();
+            uniMap.getValue(i).clearUpdateNeeded();
+        }
+
+        //flush uniforms, check locations if neccessary
+        size = uniforms.size();
+        for (int i = 0; i < size; i++) {
+            MatParam m = uniforms.getValue(i);
+            Uniform u = shader.getUniform(m.getPrefixedName());
+            if (u.getLocation() == Uniform.LOC_UNKNOWN) {
+                updateUniformLocation(shader, u);
+            }
+            if (u.getLocation() == Uniform.LOC_NOT_DEFINED) {
+                System.out.println("Uniform not defined: " + u.getName() + " in shader: " + computeShader.getName());
+                continue; //uniform does not appear in shader (maybe optimized out)
+            }
+            u.setValue(m.getVarType(), m.getValue());
+        }
+
+        //now make sure all images are properly bound
+        size = textures.size();
+        for (int i = 0; i < size; i++) {
+            TexMatParam m = textures.getValue(i);
+            Uniform u = shader.getUniform(m.getPrefixedName());
+            if (u.getLocation() == Uniform.LOC_UNKNOWN) {
+                updateUniformLocation(shader, u);
+            }
+            if (u.getLocation() == Uniform.LOC_NOT_DEFINED) {
+                System.out.println("Image or Texture not defined: " + u.getName() + " in shader: " + computeShader.getName() + " is supposed to be sampler: " + m.isSampler());
+                continue; //uniform does not appear in shader (maybe optimized out)
+            }
+
+            Texture tex = (Texture) m.getValue();
+            int unit;
+            if (m.isSampler()) {
+                unit = setTexture(tex);
+            } else {
+                if (tex.getImage().getId() == -1) {
+                    setTexture(tex);
+                } 
+                unit = setImage(tex, m.getLayer(), m.getLevel(), m.getAccess());
+            }
+            m.setImageBindingPoint(unit);
+            u.setValue(VarType.Int, unit);
+        }
+
+        //and make sure all buffers are bound
+        size = buffers.size();
+        for (int i = 0; i < size; i++) {
+            MatParam m = buffers.getValue(i);
+            throw new UnsupportedOperationException("buffers need some rework and are not yet supported for ComputeShaders");
+            //TypedBuffer buffer = (TypedBuffer) m.getValue();
+            //ShaderBufferBlock block = shader.getBufferBlock(m.getPrefixedName());
+            //if (block.getBufferObject() != buffer) {
+            //    block.setBuffer(buffer); //TODO check if udpateNeeded = true is needed in setBufferObject, the blocks binding index should not change
+            //}
+        }
+
+        //reset all values not set by current "material"
+        size = uniMap.size();
+        for (int i = 0; i < size; i++) {
+            Uniform u = uniMap.getValue(i);
+            if (!u.isSetByCurrentMaterial()) {
+                u.clearValue();
+            }
+        }
+    }
+    
     @Override
-    public void runComputeShader(ComputeShader shader, int x, int y, int z) { 
+    public void runComputeShader(ComputeShader shader, int x, int y, int z) {
+        if (x < 1 || y < 1 || z < 1) {
+            throw new IllegalArgumentException("none of the sizes can be smaller than 1");
+        }
+        prepareShader(shader);
+        setShader(shader.getShader());
+        gl4.glDispatchCompute(x, y, z);
     }
 
     @Override
     public void getLocalWorkGroupSize(ComputeShader shader, int[] store) {  
+        intBuf16.position(0).limit(3);
+        gl2.glGetProgram(shader.getShader().getId(), GL4.GL_COMPUTE_WORK_GROUP_SIZE, intBuf16); 
+        store[0] = intBuf16.get(0);
+        store[1] = intBuf16.get(1);
+        store[2] = intBuf16.get(2);
     }
 
     @Override
-    public void memoryBarrier(MemoryBarrierBits barrierBits) { 
+    public void memoryBarrier(MemoryBarrierBits barrierBits) {
+        if (barrierBits.getBits() == 0) {
+            return;
+        }
+        gl4.glMemoryBarrier(barrierBits.getBits());
     }
 }

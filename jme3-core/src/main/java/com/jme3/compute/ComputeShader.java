@@ -415,7 +415,7 @@ public class ComputeShader {
     }
 
     private void createIfNeeded() {
-        if (shader == null || definesChanged) {//first time or defines changed, update shader 
+        if (shader == null || definesChanged) {//first time or defines changed, update shader  
             int hash = 31 * DEFINES.hashCode() + BUFFER_DEFINITIONS.hashCode();
             Shader newShader = null;
             String def = null;
