@@ -31,6 +31,9 @@
  */
 package com.jme3.renderer.opengl;
 
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+
 /**
  * GL functions only available on vanilla desktop OpenGL 4.0.
  * 
@@ -38,6 +41,34 @@ package com.jme3.renderer.opengl;
  */
 public interface GL4 extends GL3 {
     
+    //additional byffer typed
+    public static final int GL_QUERY_BUFFER = 37266; 
+    public static final int GL_DRAW_INDIRECT_BUFFER = 36671;
+    public static final int GL_DISPATCH_INDIRECT_BUFFER = 37102;
+    
+    //storage / mapping flags
+    public static final int GL_MAP_READ_BIT = 1;
+    public static final int GL_MAP_WRITE_BIT = 2;
+    public static final int GL_MAP_PERSISTENT_BIT = 64;
+    public static final int GL_MAP_COHERENT_BIT = 128;
+    public static final int GL_DYNAMIC_STORAGE_BIT = 256;
+    
+    //shader information
+    public static final int GL_BUFFER_VARIABLE = 37605;
+    
+    public static final int GL_ACTIVE_RESOURCES = 37621;
+    public static final int GL_ACTIVE_VARIABLES = 37637;
+    public static final int GL_NUM_ACTIVE_VARIABLES = 37636;
+    public static final int GL_BUFFER_DATA_SIZE = 37635; 
+    public static final int GL_OFFSET = 37628;
+    public static final int GL_TYPE = 37626;
+    public static final int GL_BLOCK_INDEX = 37629;
+    public static final int GL_ARRAY_STRIDE = 37630;
+    public static final int GL_TOP_LEVEL_ARRAY_SIZE = 37644;
+    public static final int GL_TOP_LEVEL_ARRAY_STRIDE = 37645;
+    public static final int GL_ARRAY_SIZE = 37627;
+    public static final int GL_MATRIX_STRIDE = 37631;
+    public static final int GL_IS_ROW_MAJOR = 37632;
     
     //memory barrier bits
     public static final int GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT = 1;
@@ -85,6 +116,7 @@ public interface GL4 extends GL3 {
      * Accepted by the {@code target} parameter of BindBufferBase and BindBufferRange.
      */
     public static final int GL_ATOMIC_COUNTER_BUFFER = 0x92C0;
+    public static final int GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS = 37596;
 
     /**
      * Accepted by the {@code target} parameters of BindBuffer, BufferData, BufferSubData, MapBuffer, UnmapBuffer, GetBufferSubData, and GetBufferPointerv.
@@ -165,4 +197,52 @@ public interface GL4 extends GL3 {
      * @param bits the bits specifying which barriers to set
      */
     public void glMemoryBarrier(int bits);
+    
+    /**
+     * Returns requested properties of program resources
+     * 
+     * @param program the shader program to query information of
+     * @param programInterface the interface to query
+     * @param index the index to query
+     * @param props the actual property/ies to query
+     * @param length the amount of properties to query
+     * @param params the buffer to store the results
+     */
+    public void glGetProgramResource(int program, int programInterface, int index, IntBuffer props, IntBuffer length, IntBuffer params);
+    
+    /**
+     * Returns the name of a program resource as specified in the shader.
+     * 
+     * @param program the shader program to query information of
+     * @param programInterface the interface to query
+     * @param index the index of within the interface to query
+     * @return the name of the queried resource
+     */
+    public String glGetProgramResourceName(int program, int programInterface, int index); 
+    
+    /**
+     * Queries GL for properties of the specified interface in the specified shader
+     * 
+     * @param program the shader program to query information of
+     * @param programInterface the interface to query
+     * @param pName the property to query
+     * @return the value of the queried property
+     */
+    public int glGetProgramInterface(int program, int programInterface, int pName);
+    
+    /**
+     * Allocates the requested amount of bytes for the buffer currently bound to target with the specified flags
+     * @param target the target the buffer is bound to
+     * @param size the size to allocate in bytes
+     * @param flags flags for the allocation
+     */
+    public void glBufferStorage(int target, long size, int flags);
+    
+    /**
+     * Sets the initial data for the buffer currently bound to target with the specified flags
+     * @param target the target the buffer is bound to
+     * @param buffer the data to set
+     * @param flags flags for the allocation
+     */
+    public void glBufferStorage(int target, ByteBuffer buffer, int flags);
 }

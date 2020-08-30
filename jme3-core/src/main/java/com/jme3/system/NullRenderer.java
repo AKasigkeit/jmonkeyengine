@@ -31,6 +31,8 @@
  */
 package com.jme3.system;
 
+import com.jme3.buffer.TypedBuffer;
+import com.jme3.buffer.UntypedBuffer;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.light.LightList;
@@ -284,5 +286,35 @@ public class NullRenderer implements Renderer {
     @Override
     public int setImage(Texture tex, int layer, int level, Texture.Access access) { 
         return 0;
+    }
+
+    @Override
+    public void updateBuffer(UntypedBuffer buffer) { 
+    }
+
+    @Override
+    public void deleteBuffer(UntypedBuffer buffer) { 
+    }
+
+    @Override
+    public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, int offset, int length, UntypedBuffer.MappingFlag... flags) {
+        return null;
+    }
+
+    @Override
+    public void flushMappedBuffer(UntypedBuffer.BufferMappingHandle mappingHandle, int offset, int length) { 
+    }
+
+    @Override
+    public void unmapBuffer(UntypedBuffer.BufferMappingHandle mappingHandle) { 
+    }
+
+    @Override
+    public int setBuffer(String name, TypedBuffer buffer) {
+        return 0;
+    }
+
+    @Override
+    public void queryBlockLayouts(Shader shader) {
     }
 }

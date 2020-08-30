@@ -31,6 +31,8 @@
  */
 package com.jme3.renderer;
 
+import com.jme3.buffer.TypedBuffer;
+import com.jme3.buffer.UntypedBuffer;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.RenderState;
@@ -508,5 +510,62 @@ public interface Renderer {
      * @param barrierBits the barriers to set 
      */
     public void memoryBarrier(MemoryBarrierBits barrierBits);
-
+    
+    /**
+     * Updates the buffers state on the GPU to reflect the state on the CPU.
+     * 
+     * @param buffer the buffer to update
+     */
+    public void updateBuffer(UntypedBuffer buffer);
+    
+    /**
+     * Deletes the specified buffer from the GPU. 
+     * 
+     * @param buffer the buffer to delete
+     */
+    public void deleteBuffer(UntypedBuffer buffer); 
+    
+    /**
+     * Maps the specified buffer. That is data can be written "directly" to be buffer
+     * using the returned BufferMappingHandle
+     * 
+     * @param buffer the buffer to map
+     * @param offset the offset into the buffer
+     * @param length the length of the block to map
+     * @param flags flags that set the usage
+     * @return BufferMappingHandle to upload data to gpu
+     */
+    public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, int offset, int length, UntypedBuffer.MappingFlag... flags);
+    
+    /**
+     * Flushes the specified region of a mapped buffer.
+     * 
+     * @param mappingHandle the handle of the currently mapped buffer
+     * @param offset the offset to start flushing
+     * @param length the length of the block to flush
+     */
+    public void flushMappedBuffer(UntypedBuffer.BufferMappingHandle mappingHandle, int offset, int length);
+    
+    /**
+     * Unmaps the specified buffer. Flushes all content (which doesnt 
+     * necessarily mean following commands will see it immediately)
+     * @param mappingHandle the mappingHandle to unmap
+     */
+    public void unmapBuffer(UntypedBuffer.BufferMappingHandle mappingHandle);
+    
+    /**
+     * Sets the specified typed buffer. ie makes sure it is updated properly and
+     * bound to the most appropriate binding point which is then returned.
+     * 
+     * @param name specify 
+     * @param buffer the buffer to set
+     * @return the binding point it was bound to if appropriate
+     */
+    public int setBuffer(String name, TypedBuffer buffer); 
+ 
+    /**
+     * Queries GL for the layout of all blocks declared in this shader
+     * @param shader shader to query layout of
+     */
+    public void queryBlockLayouts(Shader shader);
 }

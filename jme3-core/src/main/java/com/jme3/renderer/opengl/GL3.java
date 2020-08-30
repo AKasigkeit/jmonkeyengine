@@ -31,6 +31,7 @@
  */
 package com.jme3.renderer.opengl;
 
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 /**
@@ -39,6 +40,21 @@ import java.nio.IntBuffer;
  * @author Kirill Vainer
  */
 public interface GL3 extends GL2 {
+    
+    public static final int GL_ACTIVE_UNIFORM_BLOCKS = 35382; 
+    public static final int GL_UNIFORM_ARRAY_STRIDE = 35388;
+    public static final int GL_UNIFORM_SIZE = 35384;
+    public static final int GL_UNIFORM_TYPE = 35383;
+    public static final int GL_UNIFORM_MATRIX_STRIDE = 35389;
+    public static final int GL_UNIFORM_IS_ROW_MAJOR = 35390;
+    
+    public static final int GL_MAP_INVALIDATE_RANGE_BIT = 4;
+    public static final int GL_MAP_INVALIDATE_BUFFER_BIT = 8;
+    public static final int GL_MAP_FLUSH_EXPLICIT_BIT = 16;
+    public static final int GL_MAP_UNSYNCHRONIZED_BIT = 32;
+    
+    public static final int GL_COPY_READ_BUFFER = 36662;
+    public static final int GL_COPY_WRITE_BUFFER = 36663;
 
     public static final int GL_DEPTH_STENCIL_ATTACHMENT = 0x821A;
     public static final int GL_GEOMETRY_SHADER = 0x8DD9;
@@ -234,4 +250,74 @@ public interface GL3 extends GL2 {
      * @param params a scalar or buffer in which to place the returned data.
      */
     public void glGetInteger(int pname, int index, IntBuffer params);
+
+    /**
+     * Maps the specified region of the buffer currently bound to target. 
+     * @param target the target the buffer is currently bound to
+     * @param offset offset in bytes to start the mapped region
+     * @param size size if bytes of the region to map
+     * @param access access flag indicating the mapping usage
+     * @param buffer buffer to reuse from last mapping
+     * @return the ByteBuffer to access underlying memory
+     */
+    public ByteBuffer glMapBufferRange(int target, long offset, long size, int access, ByteBuffer buffer);
+    
+    /**
+     * Flushes the specified region of the buffer currently bound to target
+     * 
+     * @param target the target the buffer to flush is currently bound to
+     * @param offset offset in bytes from the beginning ofthe mapped region to flush
+     * @param length length in bytes of the region to flush
+     */
+    public void glFlushMappedBufferRange(int target, long offset, long length);
+    
+    /**
+     * Copies data from the specified readTarget to the specified writeTarget, 
+     * taking data from readOffset and writing starting and writeOffset, copying 
+     * size bytes in total
+     * @param readTarget target to read from
+     * @param writeTarget target to write to
+     * @param readOffset offset to start reading
+     * @param writeOffset offset to start writing
+     * @param size number of bytes to copy
+     */
+    public void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size);
+    
+    /**
+     * Returns the name of an active uniform for the specified shader
+     * 
+     * @param program the shader to query uniform name of
+     * @param uniformIndex the index of the uniform to query name of
+     * @return the name of the uniform
+     */
+    public String glGetActiveUniformName(int program, int uniformIndex);
+    
+    /**
+     * Returns the name of an active uniform block for the specified shader
+     * 
+     * @param program the shader to query uniform block name of
+     * @param blockIndex the index of the block to query name of
+     * @return the name of the uniform block
+     */
+    public String glGetActiveUniformBlockName(int program, int blockIndex);
+    
+    /**
+     * Returns information about a Uniform block for the specified shader
+     * 
+     * @param program the shader to query uniform block information of
+     * @param index the index of the uniform block to query information from
+     * @param target the specific information to query
+     * @param result buffer to store result in
+     */
+    public void glGetActiveUniformBlockiv(int program, int index, int target, IntBuffer result);
+    
+    /**
+     * Returns information about a Uniform for the specified shader
+     * 
+     * @param program the shader to query uniform information form 
+     * @param index the index of the uniform to quer yinformation from
+     * @param target the specific information to query
+     * @return the information 
+     */
+    public int glGetActiveUniformsi(int program, int index, int target);
 }

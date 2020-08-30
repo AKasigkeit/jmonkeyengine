@@ -205,4 +205,12 @@ public interface GL2 extends GL {
      */
     public void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height,
                                 int depth, int format, int type, ByteBuffer data);
+    
+    /**
+     * Unmaps the buffer bound to the specified target
+     * 
+     * @param target the target to unmap
+     * @return true, unless the data has been corrupted during mapping which can happen in case of screen resolution shanges ie
+     */
+    public boolean glUnmapBuffer(int target);
 }

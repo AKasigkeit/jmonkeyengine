@@ -723,5 +723,10 @@ public class AndroidGL implements GL, GL2, GLES_30, GLExt, GLFbo {
         GLES30.glTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data);
     }
 
+    @Override
+    public boolean glUnmapBuffer(int i) {
+        return GLES30.glUnmapBuffer(i);
+    }
+
 }
 

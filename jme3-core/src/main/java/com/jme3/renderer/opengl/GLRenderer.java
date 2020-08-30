@@ -31,6 +31,10 @@
  */
 package com.jme3.renderer.opengl;
 
+import com.jme3.buffer.AtomicCounterBuffer;
+import com.jme3.buffer.FieldBuffer;
+import com.jme3.buffer.TypedBuffer;
+import com.jme3.buffer.UntypedBuffer;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.compute.TexMatParam;
@@ -43,6 +47,7 @@ import com.jme3.material.RenderState.TestFunction;
 import com.jme3.math.*;
 import com.jme3.opencl.OpenCLObjectManager;
 import com.jme3.renderer.*;
+import com.jme3.renderer.RenderContext.BufferBinding;
 import com.jme3.renderer.RenderContext.ImageBinding;
 import com.jme3.renderer.RenderContext.TextureBinding;
 import com.jme3.scene.LastVaoState;
@@ -56,6 +61,8 @@ import com.jme3.scene.VertexBuffer.Usage;
 import com.jme3.shader.*;
 import com.jme3.shader.Shader.ShaderSource;
 import com.jme3.shader.Shader.ShaderType;
+import com.jme3.shader.layout.BlockFieldLayout;
+import com.jme3.shader.layout.BlockLayout;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.FrameBuffer.RenderBuffer;
 import com.jme3.texture.Image;
@@ -90,7 +97,9 @@ public final class GLRenderer implements Renderer {
     private final ByteBuffer nameBuf = BufferUtils.createByteBuffer(250);
     private final StringBuilder stringBuf = new StringBuilder(250);
     private final IntBuffer intBuf1 = BufferUtils.createIntBuffer(1);
+    private final IntBuffer intBuf1_2 = BufferUtils.createIntBuffer(1);
     private final IntBuffer intBuf16 = BufferUtils.createIntBuffer(16);
+    private IntBuffer intBufBig = BufferUtils.createIntBuffer(32);
     private final FloatBuffer floatBuf16 = BufferUtils.createFloatBuffer(16);
     private RenderContext context = null; //now initialized after limits have been read to allow for implementation specific sizes
     private final NativeObjectManager objManager = new NativeObjectManager();
@@ -541,8 +550,14 @@ public final class GLRenderer implements Renderer {
         if (caps.contains(Caps.OpenGL42)) {
             limits.put(Limits.ImageUnits, getInteger(GL4.GL_MAX_IMAGE_UNITS));
         }  
+        
+        if (caps.contains(Caps.OpenGL42)) {
+            limits.put(Limits.AtomicCounterBufferMaxBindings, getInteger(GL4.GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS));
+        }
 
         if (hasExtension("GL_ARB_shader_storage_buffer_object")) {
+            limits.put(Limits.ShaderStorageBufferObjectMaxBindings, getInteger(GL4.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS));
+            
             caps.add(Caps.ShaderStorageBufferObject);
             limits.put(Limits.ShaderStorageBufferObjectMaxBlockSize, getInteger(GL4.GL_MAX_SHADER_STORAGE_BLOCK_SIZE));
             // Commented out until we support ComputeShaders and the ComputeShader Cap
@@ -560,6 +575,8 @@ public final class GLRenderer implements Renderer {
         }
 
         if (hasExtension("GL_ARB_uniform_buffer_object")) {
+            limits.put(Limits.UniformBufferObjectMaxBindings, getInteger(GL3.GL_MAX_UNIFORM_BUFFER_BINDINGS));
+            
             caps.add(Caps.UniformBufferObject);
             limits.put(Limits.UniformBufferObjectMaxBlockSize, getInteger(GL3.GL_MAX_UNIFORM_BLOCK_SIZE));
             if (caps.contains(Caps.GeometryShader)) {
@@ -651,6 +668,9 @@ public final class GLRenderer implements Renderer {
         int maxCombTextures = limits.get(Limits.CombinedTextureUnits);
         int maxImageUnits = limits.getOrDefault(Limits.ImageUnits, 0);
         int maxCompImages = limits.getOrDefault(Limits.ComputeShaderMaxImageUnits, 0);
+        int maxUboBinds = limits.getOrDefault(Limits.UniformBufferObjectMaxBindings, 0);
+        int maxSsboBinds = limits.getOrDefault(Limits.ShaderStorageBufferObjectMaxBindings, 0);
+        int maxAcboBinds = limits.getOrDefault(Limits.AtomicCounterBufferMaxBindings, 0);
         
         int maxTextures = Math.min(Math.min(maxFragTextures, maxVertTextures), maxCombTextures);
         int maxImages = Math.min(maxImageUnits, maxCompImages);
@@ -661,10 +681,13 @@ public final class GLRenderer implements Renderer {
         System.out.println("maxCombTextures: "+maxCombTextures);
         System.out.println("maxImageUnits: "+maxImageUnits);
         System.out.println("maxCompImages: "+maxCompImages);
+        System.out.println("maxUboBinds: "+maxUboBinds);
+        System.out.println("maxSsboBinds: "+maxSsboBinds);
+        System.out.println("maxAcboBinds: "+maxAcboBinds);
         System.out.println(" -> maxTextures: "+maxTextures);
         System.out.println(" -> maxImages: "+maxImages);
         
-        context = new RenderContext(maxTextures, maxImages); 
+        context = new RenderContext(maxTextures, maxImages, maxUboBinds, maxSsboBinds, maxAcboBinds); 
         if (gl2 != null && !(gl instanceof GLES_30)) {
             context.initialDrawBuf = getInteger(GL2.GL_DRAW_BUFFER);
             context.initialReadBuf = getInteger(GL2.GL_READ_BUFFER);
@@ -3744,5 +3767,434 @@ public final class GLRenderer implements Renderer {
             return;
         }
         gl4.glMemoryBarrier(barrierBits.getBits());
+    }
+
+    @Override
+    public void deleteBuffer(UntypedBuffer buffer) { 
+        if (buffer.getId() != -1) {
+            intBuf1.put(0, buffer.getId());
+            gl.glDeleteBuffers(intBuf1);
+            
+            buffer.resetObject();
+        }
+    } 
+    
+    private void bindVertexArrayBuffer(int id) {
+        if (context.boundArrayVBO != id) {
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, id);
+            context.boundArrayVBO = id;
+        }
+    }
+    
+    private void bindCopyReadBuffer(int id) {
+        if (context.boundCopyRead != id) {
+            gl.glBindBuffer(GL3.GL_COPY_READ_BUFFER, id);
+            context.boundCopyRead = id;
+        }
+    }
+    
+    private void bindCopyWriteBuffer(int id) {
+        if (context.boundCopyWrite != id) {
+            gl.glBindBuffer(GL3.GL_COPY_WRITE_BUFFER, id);
+            context.boundCopyWrite = id;
+        }
+    }
+    
+    private void bindVertexElementBuffer(int id) {
+        if (context.boundElementArrayVBO != id) {
+            gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, id);
+            context.boundElementArrayVBO = id;
+        }
+    }
+    
+    private void bindBufferUnit(TypedBuffer.Type type, UntypedBuffer buffer, int unit) {
+        int id = buffer.getId();
+        switch (type) {
+            case UniformBuffer:
+                if (context.boundUniformBuffers[unit].id != id) {
+                    gl3.glBindBufferBase(GL3.GL_UNIFORM_BUFFER, unit, buffer.getId());
+                    context.boundUboUnit = buffer.getId();
+                    context.boundUniformBuffers[unit].id = id;
+                }
+                context.boundUniformBuffers[unit].update = context.nextUniformBufferBindingNumber++;
+                break;
+            case ShaderStorageBuffer:
+                if (context.boundShaderStorageBuffers[unit].id != id) {
+                    gl3.glBindBufferBase(GL4.GL_SHADER_STORAGE_BUFFER, unit, buffer.getId());
+                    context.boundSsboUnit = buffer.getId();
+                    context.boundShaderStorageBuffers[unit].id = id;
+                }
+                context.boundShaderStorageBuffers[unit].update = context.nextShaderStorageBufferBindingNumber++;
+                break;
+            case AtomicCounterBuffer:
+                if (context.boundAtomicCounterBuffers[unit].id != id) {
+                    gl3.glBindBufferBase(GL4.GL_ATOMIC_COUNTER_BUFFER, unit, buffer.getId());
+                    context.boundAcboUnit = buffer.getId();
+                    context.boundAtomicCounterBuffers[unit].id = id;
+                }
+                context.boundAtomicCounterBuffers[unit].update = context.nextAtomicCounterBindingNumber++;
+                break;
+            case DispatchIndirectBuffer:
+                if (context.boundDispatchIboUnit != buffer.getId()) {
+                    gl3.glBindBuffer(GL4.GL_DISPATCH_INDIRECT_BUFFER, buffer.getId());
+                    context.boundDispatchIboUnit = buffer.getId();
+                }
+                break;
+            case DrawIndirectBuffer:
+                if (context.boundDrawIboUnit != buffer.getId()) {
+                    gl3.glBindBuffer(GL4.GL_DRAW_INDIRECT_BUFFER, buffer.getId());
+                    context.boundDrawIboUnit = buffer.getId();
+                }
+                break;
+            case QueryBuffer:
+                if (context.boundQboUnit != buffer.getId()) {
+                    gl3.glBindBuffer(GL4.GL_QUERY_BUFFER, buffer.getId());
+                    context.boundQboUnit = buffer.getId();
+                }
+                break;
+        }
+    }
+
+    @Override
+    public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, int offset, int length, UntypedBuffer.MappingFlag... flags) {     
+        if (buffer.getId() == -1) {
+            throw new RendererException("cannot map buffer that has not yet been created");
+        } 
+        for (UntypedBuffer.MappingFlag flag : flags) {
+            System.out.println(" - "+flag);
+        } 
+        
+        int flagBits = UntypedBuffer.MappingFlag.fromArray(flags);
+        bindVertexArrayBuffer(buffer.getId());
+        ByteBuffer mappedBuffer = gl3.glMapBufferRange(GL.GL_ARRAY_BUFFER, offset, length, flagBits, null);
+      
+        UntypedBuffer.BufferMappingHandle handle = new UntypedBuffer.BufferMappingHandle(buffer, mappedBuffer, offset, length, flagBits);
+        return handle;
+    }
+
+    @Override
+    public void flushMappedBuffer(UntypedBuffer.BufferMappingHandle mappingHandle, int offset, int length) { 
+        if (mappingHandle.getBuffer().getId() == -1 || !mappingHandle.getBuffer().isMapped()) {
+            throw new RendererException("can only flush mapped buffers");
+        }
+         
+        bindVertexArrayBuffer(mappingHandle.getBuffer().getId());
+        gl3.glFlushMappedBufferRange(GL.GL_ARRAY_BUFFER, offset, length);
+    }
+
+    @Override
+    public void unmapBuffer(UntypedBuffer.BufferMappingHandle mappingHandle) { 
+        if (mappingHandle.getBuffer().getId() == -1 || !mappingHandle.getBuffer().isMapped()) {
+            throw new RendererException("can only unmap mapped buffers");
+        }
+        
+        bindVertexArrayBuffer(mappingHandle.getBuffer().getId());
+        gl3.glUnmapBuffer(GL.GL_ARRAY_BUFFER);
+    }
+
+    @Override
+    public void updateBuffer(UntypedBuffer buffer) { 
+        
+        boolean isGpuOnly = buffer.getMode() == UntypedBuffer.MemoryMode.GpuOnly;
+        boolean isStorage = buffer.getStorageAPI() == UntypedBuffer.StorageApi.Storage;
+        
+        int bufferId = buffer.getId(); 
+        int newBufferId = -1;
+        if (bufferId == -1 || (buffer.hasPendingSizeChange() && (isGpuOnly || isStorage))) {
+            intBuf1.clear();
+            gl.glGenBuffers(intBuf1);
+             
+            if (bufferId != -1) {
+                newBufferId = intBuf1.get(0);
+            } else {
+                bufferId = intBuf1.get(0);
+                buffer.setId(bufferId); 
+                objManager.registerObject(buffer);
+            }
+        } 
+        
+        //storage creation first 
+        if (buffer.isUpdateNeeded()) {   
+            bindVertexArrayBuffer(bufferId);
+            if (isGpuOnly) {
+                if (isStorage) {
+                    gl4.glBufferStorage(GL.GL_ARRAY_BUFFER, buffer.getSizeOnGpu(), buffer.getStorageFlags());
+                } else {
+                    gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.getSizeOnGpu(), buffer.getBufferDataUsage());
+                }
+            } else { 
+                if (isStorage) {
+                    gl4.glBufferStorage(GL.GL_ARRAY_BUFFER, buffer.getCpuData(), buffer.getStorageFlags());
+                } else {
+                    gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.getCpuData(), buffer.getBufferDataUsage());
+                }
+            }
+        }
+        
+        //size changed (buffer must exist already)
+        if (buffer.hasPendingSizeChange()) {    
+            if (isStorage || isGpuOnly) { //if it was glBufferStorage fixed created or we do not have the data on the cpu, we need to copy content
+                //bind new buffer and init new buffer
+                bindVertexArrayBuffer(newBufferId); 
+                if (isStorage) {
+                    gl4.glBufferStorage(GL.GL_ARRAY_BUFFER, buffer.getSizeOnGpu(), buffer.getStorageFlags());
+                } else {
+                    gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.getSizeOnGpu(), buffer.getBufferDataUsage());
+                }
+                //copy contents
+                int copySize = Math.min(buffer.getSizeOnGpu(), buffer.getPendingSizeChangePreviousSize());
+                if (caps.contains(Caps.OpenGL31)) { //can use copy buffers to not interfere with vertex array bindings
+                    bindCopyReadBuffer(bufferId);
+                    bindCopyWriteBuffer(newBufferId);
+                    gl3.glCopyBufferSubData(GL3.GL_COPY_READ_BUFFER, GL3.GL_COPY_WRITE_BUFFER, 0L, 0L, copySize);
+                } else {
+                    bindVertexElementBuffer(bufferId);
+                    gl3.glCopyBufferSubData(GL.GL_ELEMENT_ARRAY_BUFFER, GL.GL_ARRAY_BUFFER, 0L, 0L, copySize);
+                }
+                //delete old
+                intBuf1.put(0, bufferId);
+                gl.glDeleteBuffers(intBuf1);
+                //set new id
+                bufferId = newBufferId;
+                buffer.setId(bufferId);
+            } else {
+                bindVertexArrayBuffer(bufferId);  
+                gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.getCpuData(), buffer.getBufferDataUsage());
+            }
+        }
+        
+        //now download
+        if (buffer.hasPendingDownload()) { 
+            bindVertexArrayBuffer(bufferId); 
+            gl.glGetBufferSubData(GL.GL_ARRAY_BUFFER, buffer.getPendingDownloadOffset(), buffer.getPendingDownloadBuffer());
+            buffer.clearPendingDownload();
+        }
+        
+        //finally update
+        if (buffer.hasPendingUpdate()) {
+            bindVertexArrayBuffer(bufferId);   
+            gl.glBufferSubData(GL.GL_ARRAY_BUFFER, buffer.getPendingUpdateOffset(), buffer.getPendingUpdateBuffer());
+            buffer.clearPendingUpdate();
+        }
+        
+        buffer.clearUpdateNeeded();
+    }
+    
+    private int getPreferredTypedBufferUnit(TypedBuffer buffer) {    
+        switch (buffer.getType()) {
+            case AtomicCounterBuffer:
+                return ((AtomicCounterBuffer)buffer).getBinding(); //atomic counter buffers need explicit binding
+            case DispatchIndirectBuffer: 
+            case DrawIndirectBuffer: 
+            case QueryBuffer:
+                return -1; //no specific binding points for those
+        }
+        
+        int unit = -1;
+        int lowest = Integer.MAX_VALUE;
+        int lowestIndex = -1;
+        BufferBinding[] bindings = buffer.getType() == TypedBuffer.Type.UniformBuffer ? context.boundUniformBuffers
+                : context.boundShaderStorageBuffers;
+        
+        for (int i = 0; i < bindings.length; i++) {
+            BufferBinding bufBinding = bindings[i];
+            //if (bufBinding.buffer == buffer.getUntypedBuffer()) {
+            if (bufBinding.id == buffer.getUntypedBuffer().getId()) {
+                unit = i;
+                break;
+            } else if (bufBinding.update < lowest) {
+                lowest = bufBinding.update;
+                lowestIndex = i;
+            }
+        }
+        if (unit == -1) {
+            unit = lowestIndex;
+        }
+        return unit;
+    }
+
+    @Override
+    public int setBuffer(String name, TypedBuffer buffer) { 
+       if (buffer instanceof FieldBuffer) {
+           FieldBuffer fieldBuffer = (FieldBuffer) buffer;
+           if (fieldBuffer.isAutoLayout() && fieldBuffer.getLayout() == null) { //need to get layout for this buffer 
+               if (context.boundShader == null) {
+                   throw new RendererException("cannot automatically layout UBO / SSBO without shader set that defines the GLSL layout");
+               }               
+               BlockLayout layout = fieldBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer ? 
+                       context.boundShader.getShaderStorageBlockLayout(name) :
+                       context.boundShader.getUniformBlockLayout(name);
+               if (layout == null) {
+                   throw new RendererException("cannot automatically layout UBO / SSBO: currently bound shader doesnt declare a block with the specified name: "+name);
+               }
+               fieldBuffer.setLayout(layout);
+           }
+           fieldBuffer.flushFieldUpdates();
+       }
+        
+       //now update underlying buffer
+       updateBuffer(buffer.getUntypedBuffer());
+       
+       //find binding point
+       int unit = getPreferredTypedBufferUnit(buffer);
+       bindBufferUnit(buffer.getType(), buffer.getUntypedBuffer(), unit);
+       return unit;
+    }
+     
+    @Override
+    public void queryBlockLayouts(Shader shader) {
+        if (shader.hasLayoutsQueried()) {
+            return;
+        }
+        if (shader.getId() == -1) {
+            setShader(shader);
+        }
+        
+        HashMap<String, BlockLayout> ubLayouts = queryUniformBlockLayout(shader.getId());
+        HashMap<String, BlockLayout> ssbLayouts = queryShaderStorageBlockLayout(shader.getId());
+        shader.setBlockLayouts(ssbLayouts, ubLayouts);
+    }
+     
+    public HashMap<String, BlockLayout> queryUniformBlockLayout(int id) { 
+        if (id == -1) {
+            throw new RendererException("cannot query openGL for shader that has not yet been created.");
+        }
+        HashMap<String, BlockLayout> ubLayouts = new HashMap<>(); 
+         
+        gl2.glGetProgram(id, GL3.GL_ACTIVE_UNIFORM_BLOCKS, intBuf1);
+        int numResources = intBuf1.get(0); 
+        if (numResources < 1) {
+            return ubLayouts;
+        }
+        
+        for (int i = 0; i < numResources; i++) {
+            String name = gl3.glGetActiveUniformBlockName(id, i); 
+            
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, intBuf1);
+            int numVariables = intBuf1.get(0); 
+            if (numVariables < 1) {
+                continue;
+            }
+             
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_BINDING, intBuf1);
+            int currentBinding = intBuf1.get(0); 
+            if (currentBinding < 0) {
+                continue;
+            }
+            
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_DATA_SIZE, intBuf1);
+            int bufferSize = intBuf1.get(0); 
+             
+            BlockLayout ubLayout = new BlockLayout(name, i, bufferSize);
+            ubLayouts.put(name, ubLayout);
+            
+            if (numVariables > intBufBig.capacity()) {
+                BufferUtils.destroyDirectBuffer(intBufBig);
+                intBufBig = BufferUtils.createIntBuffer(numVariables);
+            }
+            intBufBig.clear();
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, intBufBig);
+            
+            for (int v = 0; v < numVariables; v++) {
+                int varIndex = intBufBig.get(v);
+                if (varIndex < 0) {
+                    continue;
+                }
+                 
+                String varName = gl3.glGetActiveUniformName(id, varIndex);
+                int varOffset = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_OFFSET);
+                int varType = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_TYPE);
+                int varArraySize = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_SIZE);
+                int varArrayStride = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_ARRAY_STRIDE);
+                int varMatStride = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_MATRIX_STRIDE);
+                boolean varMatRowMajor = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_IS_ROW_MAJOR) == 1; 
+                 
+                ubLayout.addFieldLayout(new BlockFieldLayout(
+                        varName, varIndex, varOffset, varType, -1, varArrayStride, varArraySize, 
+                        varMatStride, 0, 0, varMatRowMajor));
+            } 
+        } 
+        return ubLayouts;
+    }
+    
+    private void getProgramResource(IntBuffer propsBuf, IntBuffer lenBuf, IntBuffer paramsBuf, int shaderId, int index, int props, int progInterface) {
+        propsBuf.put(0, props);
+        lenBuf.put(0, 1);
+        paramsBuf.clear();
+        gl4.glGetProgramResource(shaderId, progInterface, index, propsBuf, lenBuf, paramsBuf);
+    }
+    
+    private HashMap<String, BlockLayout> queryShaderStorageBlockLayout(int id) { 
+        if (id == -1) {
+            throw new RendererException("cannot query openGL for shader that has not yet been created.");
+        }
+        HashMap<String, BlockLayout> ssbLayouts = new HashMap<>(); 
+         
+        int numResources = gl4.glGetProgramInterface(id, GL4.GL_SHADER_STORAGE_BLOCK, GL4.GL_ACTIVE_RESOURCES); 
+        if (numResources < 1) {
+            return ssbLayouts;
+        }
+        
+        IntBuffer propsBuf = intBuf16;
+        IntBuffer lenBuf = intBuf1_2;
+        IntBuffer paramsBuf = intBuf1;
+        for (int i = 0; i < numResources; i++) {
+            String name = gl4.glGetProgramResourceName(id, GL4.GL_SHADER_STORAGE_BLOCK, i); 
+            int index = gl4.glGetProgramResourceIndex(id, GL4.GL_SHADER_STORAGE_BLOCK, name); 
+            if (index < 0) {
+                continue;
+            }
+            
+            getProgramResource(propsBuf, lenBuf, paramsBuf, id, index, GL4.GL_NUM_ACTIVE_VARIABLES, GL4.GL_SHADER_STORAGE_BLOCK);
+            int numVariables = paramsBuf.get(0); 
+            if (numVariables < 1) {
+                continue;
+            }
+                    
+            getProgramResource(propsBuf, lenBuf, paramsBuf, id, index, GL4.GL_BUFFER_DATA_SIZE, GL4.GL_SHADER_STORAGE_BLOCK);
+            int bufferSize = paramsBuf.get(0); 
+             
+            BlockLayout ssbLayout = new BlockLayout(name, index, bufferSize);
+            ssbLayouts.put(name, ssbLayout);
+            
+            if (numVariables > intBufBig.capacity()) {
+                BufferUtils.destroyDirectBuffer(intBufBig);
+                intBufBig = BufferUtils.createIntBuffer(numVariables);
+            }
+            intBufBig.clear();
+            getProgramResource(propsBuf, lenBuf, intBufBig, id, index, GL4.GL_ACTIVE_VARIABLES, GL4.GL_SHADER_STORAGE_BLOCK);
+            
+            for (int v = 0; v < numVariables; v++) {
+                int varIndex = intBufBig.get(v);
+                if (varIndex < 0) {
+                    continue;
+                }
+                
+                String varName = gl4.glGetProgramResourceName(id, GL4.GL_BUFFER_VARIABLE, varIndex);
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_OFFSET, GL4.GL_BUFFER_VARIABLE);
+                int varOffset = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_TYPE, GL4.GL_BUFFER_VARIABLE);
+                int varType = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_BLOCK_INDEX, GL4.GL_BUFFER_VARIABLE);
+                int varBlockIndex = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_ARRAY_STRIDE, GL4.GL_BUFFER_VARIABLE);
+                int varArrayStride = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_ARRAY_SIZE, GL4.GL_BUFFER_VARIABLE);
+                int varArraySize = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_MATRIX_STRIDE, GL4.GL_BUFFER_VARIABLE);
+                int varMatStride = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_IS_ROW_MAJOR, GL4.GL_BUFFER_VARIABLE);
+                boolean varMatRowMajor = paramsBuf.get(0) == 1; 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_TOP_LEVEL_ARRAY_SIZE, GL4.GL_BUFFER_VARIABLE);
+                int varTopLevelArraySize = paramsBuf.get(0); 
+                getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_TOP_LEVEL_ARRAY_STRIDE, GL4.GL_BUFFER_VARIABLE);
+                int varTopLevelArrayStride = paramsBuf.get(0);
+                 
+                ssbLayout.addFieldLayout(new BlockFieldLayout(
+                        varName, varIndex, varOffset, varType, varBlockIndex, varArrayStride, varArraySize, 
+                        varMatStride, varTopLevelArraySize, varTopLevelArrayStride, varMatRowMajor));
+            }
+        }
+        return ssbLayouts;
     }
 }

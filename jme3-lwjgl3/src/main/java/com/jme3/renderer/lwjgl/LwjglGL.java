@@ -667,4 +667,69 @@ public class LwjglGL extends LwjglRender implements GL, GL2, GL3, GL4 {
     public void glGetInteger(int pname, int index, IntBuffer params) {
         GL30.glGetIntegeri_v(pname, index, params);
     }
+
+    @Override
+    public boolean glUnmapBuffer(int target) {
+        return GL20.glUnmapBuffer(target);
+    }
+
+    @Override
+    public ByteBuffer glMapBufferRange(int target, long offset, long length, int access, ByteBuffer oldBuffer) {
+        return GL30.glMapBufferRange(target, offset, length, access, oldBuffer);
+    }
+
+    @Override
+    public void glFlushMappedBufferRange(int target, long offset, long length) {
+        GL30.glFlushMappedBufferRange(target, offset, length);
+    }
+
+    @Override
+    public void glGetProgramResource(int program, int programInterface, int index, IntBuffer props, IntBuffer length, IntBuffer params) {
+        GL43.glGetProgramResourceiv(program, programInterface, index, props, length, params);
+    }
+
+    @Override
+    public String glGetProgramResourceName(int program, int programInterface, int index) {
+        return GL43.glGetProgramResourceName(program, programInterface, index);
+    }
+
+    @Override
+    public int glGetProgramInterface(int program, int programInterface, int pname) {
+        return GL43.glGetProgramInterfacei(program, programInterface, pname);
+    }
+
+    @Override
+    public void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) {
+        GL31.glCopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size);
+    }
+
+    @Override
+    public String glGetActiveUniformName(int program, int uniformIndex) {
+        return GL31.glGetActiveUniformName(program, uniformIndex);
+    }
+
+    @Override
+    public String glGetActiveUniformBlockName(int program, int uniformBlockIndex) {
+        return GL31.glGetActiveUniformBlockName(program, uniformBlockIndex);
+    }
+
+    @Override
+    public void glGetActiveUniformBlockiv(int program, int uniformBlockIndex, int pname, IntBuffer params) {
+        GL31.glGetActiveUniformBlockiv(program, uniformBlockIndex, pname, params);
+    }
+
+    @Override
+    public int glGetActiveUniformsi(int program, int uniformIndex, int pname) {
+        return GL31.glGetActiveUniformsi(program, uniformIndex, pname);
+    }
+
+    @Override
+    public void glBufferStorage(int target, long size, int flags) {
+        GL44.glBufferStorage(target, size, flags);
+    }
+
+    @Override
+    public void glBufferStorage(int target, ByteBuffer data, int flags) {
+        GL44.glBufferStorage(target, data, flags);
+    }
 }

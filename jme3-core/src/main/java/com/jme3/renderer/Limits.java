@@ -70,6 +70,7 @@ public enum Limits {
     UniformBufferObjectMaxFragmentBlocks,
     UniformBufferObjectMaxGeometryBlocks,
     UniformBufferObjectMaxBlockSize,
+    UniformBufferObjectMaxBindings,
 
     // SSBO
     ShaderStorageBufferObjectMaxBlockSize,
@@ -80,6 +81,11 @@ public enum Limits {
     ShaderStorageBufferObjectMaxTessEvaluationBlocks,
     ShaderStorageBufferObjectMaxComputeBlocks,
     ShaderStorageBufferObjectMaxCombineBlocks,
+    ShaderStorageBufferObjectMaxBindings,
+    
+    // AtomicCounterBuffer
+    AtomicCounterBufferMaxBindings,
+    
     
     //ComputeShader
     ComputeShaderMaxImageUnits,

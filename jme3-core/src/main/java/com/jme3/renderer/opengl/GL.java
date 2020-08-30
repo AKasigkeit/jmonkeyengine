@@ -43,8 +43,22 @@ import java.nio.ShortBuffer;
  *
  * @author Kirill Vainer
  */
-public interface GL {
-
+public interface GL { 
+    
+    public static final int GL_DYNAMIC_READ = 35049;
+    public static final int GL_STREAM_COPY = 35042;
+    public static final int GL_STATIC_COPY = 35046;
+    public static final int GL_STATIC_READ = 35045;
+    
+    public static final int
+        GL_BOOL              = 0x8B56,
+        GL_FLOAT_VEC2        = 0x8B50,
+        GL_FLOAT_VEC3        = 0x8B51,
+        GL_FLOAT_VEC4        = 0x8B52,
+        GL_FLOAT_MAT3        = 0x8B5B,
+        GL_FLOAT_MAT4        = 0x8B5C;
+    
+    
     public static final int GL_ALPHA = 0x1906;
     public static final int GL_ALWAYS = 0x207;
     public static final int GL_ARRAY_BUFFER = 0x8892;

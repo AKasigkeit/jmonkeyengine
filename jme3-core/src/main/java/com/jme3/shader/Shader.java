@@ -33,14 +33,33 @@ package com.jme3.shader;
 
 import com.jme3.renderer.Renderer;
 import com.jme3.scene.VertexBuffer;
+import com.jme3.shader.layout.BlockFieldLayout;
+import com.jme3.shader.layout.BlockLayout;
+import com.jme3.shader.layout.Type;
 import com.jme3.util.IntMap;
 import com.jme3.util.IntMap.Entry;
 import com.jme3.util.ListMap;
 import com.jme3.util.NativeObject;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 
 public final class Shader extends NativeObject {
+    
+    /**
+     * A map containing all ShaderStorageBlock layout information related to blocks in this shader
+     */
+    private HashMap<String, BlockLayout> ssbLayouts = null;
+    
+    /**
+     * A map containing all UniformStorageBlock layout information related to blocks in this shader
+     */
+    private HashMap<String, BlockLayout> ubLayouts = null;
+    
+    /**
+     * Keeps track of if layout have been queried already
+     */
+    private boolean layoutsQueried = false;
     
     /**
      * A list of all shader sources currently attached.
@@ -258,6 +277,99 @@ public final class Shader extends NativeObject {
         bufferBlocks = null;
         boundUniforms = null;
         attribs = null;
+    }
+    
+    /**
+     * Internal use only. Sets the ssbo and ubo layout information once it was queried
+     * 
+     * @param ssbLayoutInformation
+     * @param ubLayoutInformation 
+     */
+    public void setBlockLayouts(HashMap<String, BlockLayout> ssbLayoutInformation, HashMap<String, BlockLayout> ubLayoutInformation) {
+        ssbLayouts = ssbLayoutInformation;
+        ubLayouts = ubLayoutInformation;
+        layoutsQueried = true;
+    }
+    
+    /**
+     * Returns true if SSBO and UBO layout information has already been queried
+     * for this shader.
+     * 
+     * @return true if and only if layout information has been queried already for this shader
+     */
+    public boolean hasLayoutsQueried() {
+        return layoutsQueried;
+    }
+    
+    /**
+     * Internal use only.
+     * Resets the shaders layout which will result in querying for them again
+     */
+    public void resetLayoutsQueried() {
+        layoutsQueried = false;
+    }
+    
+    /**
+     * Returns the layout information for the SSBO block with specified name or null
+     * if no such block was found.
+     * 
+     * @param blockName name of the block to get information from
+     * @return the layout of the queried block
+     */
+    public BlockLayout getShaderStorageBlockLayout(String blockName) {
+        return ssbLayouts.get(blockName);
+    }
+    
+    /**
+     * Returns the layout information for the UBO block with specified name or null
+     * if no such block was found.
+     * 
+     * @param blockName name of the block to get information from
+     * @return the layout of the queried block
+     */
+    public BlockLayout getUniformBlockLayout(String blockName) {
+        return ubLayouts.get(blockName);
+    }
+    
+    /**
+     * For debug purposes. Prints the layout information of all SSBOs and UBOs declared
+     * in this shader.
+     */
+    public void printLayoutInformation() {
+        System.out.println("------------- LAYOUT INFORMATION --------------");
+        if (shaderSourceList.isEmpty()) {
+            System.out.println("Shader does not contain any sources");
+            return;
+        }
+        System.out.println("name: "+shaderSourceList.get(0).getName());
+        
+        String[] names = new String[]{"UBOs", "SSBOs"};
+        ArrayList<HashMap<String, BlockLayout>> layouts = new ArrayList<>(2);
+        layouts.add(ubLayouts);
+        layouts.add(ssbLayouts);
+        
+        for (int i = 0; i < 2; i++) {
+            System.out.println(names[i]+": "+layouts.get(i).size());
+            for (java.util.Map.Entry<String, BlockLayout> layout : layouts.get(i).entrySet()) {
+                BlockLayout lay = layout.getValue();
+                System.out.println(" - name  : "+lay.getName());
+                System.out.println("    - index : "+lay.getIndex());
+                System.out.println("    - size  : "+lay.getSize());
+                for (BlockFieldLayout blockLay : lay.getFieldLayouts().getArray()) {
+                    VarType type = Type.fromGLConstant(blockLay.getType()).getVarType();
+                    System.out.println("       - name     : "+blockLay.getName());
+                    System.out.println("       - type     : "+type);
+                    System.out.println("       - index    : "+blockLay.getIndex());
+                    System.out.println("       - offset   : "+blockLay.getOffset());
+                    System.out.println("       - arraySize     : "+blockLay.getArraySize());
+                    System.out.println("       - arrayStride   : "+blockLay.getArrayStride());
+                    System.out.println("       - matStride     : "+blockLay.getMatrixStride());
+                    System.out.println("       - tlArraySize   : "+blockLay.getTopLevelArraySize());
+                    System.out.println("       - tlArrayStride : "+blockLay.getMatrixStride());
+                }
+            }
+        }
+        
     }
 
     /**

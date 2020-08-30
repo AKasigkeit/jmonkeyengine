@@ -207,6 +207,10 @@ public class RenderContext {
      */
     public int boundArrayVBO;
 
+    public int boundCopyRead;
+    
+    public int boundCopyWrite;
+    
     /**
      * Currently bound pixel pack pixel buffer.
      */
@@ -239,6 +243,24 @@ public class RenderContext {
         public int access;
         public int update = 0;
     }
+    
+    public final BufferBinding[] boundAtomicCounterBuffers;
+    
+    public int nextAtomicCounterBindingNumber = 0;
+    
+    public final BufferBinding[] boundUniformBuffers;
+    
+    public int nextUniformBufferBindingNumber = 0;
+    
+    public final BufferBinding[] boundShaderStorageBuffers;
+    
+    public int nextShaderStorageBufferBindingNumber = 0;
+    
+    public static class BufferBinding {
+        //public UntypedBuffer buffer = null;
+        public int id = -1;
+        public int update = 0;
+    }
 
     /**
      * IDList for texture units
@@ -253,6 +275,22 @@ public class RenderContext {
      * @see Renderer#setTexture(int, com.jme3.texture.Texture)
      */
     public int boundTextureUnit;
+    
+    public int boundUboUnit;
+    
+    public int boundSsboUnit;
+    
+    public int boundAcboUnit;
+    
+    public int boundDispatchIboUnit;
+    
+    public int boundDrawIboUnit;
+    
+    public int boundQboUnit;
+    
+    public int boundCopyReadUnit;
+    
+    public int boundCopyWriteUnit;
 
     /**
      * Stencil Buffer state
@@ -294,10 +332,10 @@ public class RenderContext {
     public ColorRGBA clearColor = new ColorRGBA(0, 0, 0, 0);
 
     public RenderContext() {
-        this(16, 8);
+        this(16, 0, 0, 0, 0);
     }
     
-    public RenderContext(int maxTextures, int maxImages) {
+    public RenderContext(int maxTextures, int maxImages, int maxUbos, int maxSSBOs, int maxACBOs) {
         boundTextures = new TextureBinding[maxTextures];
         for (int i = 0; i < boundTextures.length; i++) {
             boundTextures[i] = new TextureBinding();
@@ -306,6 +344,21 @@ public class RenderContext {
         boundImages = new ImageBinding[maxImages];
         for (int i = 0; i < boundImages.length; i++) {
             boundImages[i] = new ImageBinding();
+        }
+        
+        boundUniformBuffers = new BufferBinding[maxUbos];
+        for (int i = 0; i < boundUniformBuffers.length; i++) {
+            boundUniformBuffers[i] = new BufferBinding();
+        }
+        
+        boundShaderStorageBuffers = new BufferBinding[maxSSBOs];
+        for (int i = 0; i < boundShaderStorageBuffers.length; i++) {
+            boundShaderStorageBuffers[i] = new BufferBinding();
+        }
+        
+        boundAtomicCounterBuffers = new BufferBinding[maxACBOs];
+        for (int i = 0; i < boundAtomicCounterBuffers.length; i++) {
+            boundAtomicCounterBuffers[i] = new BufferBinding();
         }
         
         init();
@@ -342,9 +395,19 @@ public class RenderContext {
         boundElementArrayVBO = 0;
         boundVertexArray = 0;
         boundArrayVBO = 0;
+        boundCopyRead = 0;
+        boundCopyWrite = 0;
         boundPixelPackPBO = 0;
         numTexturesSet = 0;
         boundTextureUnit = 0;
+        boundUboUnit = 0;
+        boundSsboUnit = 0;
+        boundAcboUnit = 0;
+        boundDispatchIboUnit = 0;
+        boundDrawIboUnit = 0;
+        boundQboUnit = 0;
+        boundCopyReadUnit = 0;
+        boundCopyWriteUnit = 0;
         stencilTest = false;
 
         frontStencilStencilFailOperation = RenderState.StencilOperation.Keep;
@@ -377,6 +440,21 @@ public class RenderContext {
         for (int i = 0; i < boundImages.length; i++) {
             boundImages[i].image = null;
             boundImages[i].update = 0;
+        }
+        
+        for (int i = 0; i < boundUniformBuffers.length; i++) {
+            boundUniformBuffers[i].id = -1;
+            boundUniformBuffers[i].update = 0;
+        }
+        
+        for (int i = 0; i < boundShaderStorageBuffers.length; i++) {
+            boundShaderStorageBuffers[i].id = -1;
+            boundShaderStorageBuffers[i].update = 0;
+        }
+        
+        for (int i = 0; i < boundAtomicCounterBuffers.length; i++) {
+            boundAtomicCounterBuffers[i].id = -1;
+            boundAtomicCounterBuffers[i].update = 0;
         }
 
         textureIndexList.reset();

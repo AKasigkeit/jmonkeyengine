@@ -628,4 +628,69 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     public void glGetInteger(int pname, int index, IntBuffer params) {
         GL30.glGetInteger(pname, index, params);
     }
+
+    @Override
+    public boolean glUnmapBuffer(int i) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to unmap buffers");
+    }
+
+    @Override
+    public ByteBuffer glMapBufferRange(int target, long offset, long length, int access, ByteBuffer oldBuffer) {
+        return GL30.glMapBufferRange(target, offset, length, access, oldBuffer);
+    }
+
+    @Override
+    public void glFlushMappedBufferRange(int target, long offset, long length) {
+        GL30.glFlushMappedBufferRange(target, offset, length);
+    }
+
+    @Override
+    public void glGetProgramResource(int i, int i1, int i2, IntBuffer ib, IntBuffer ib1, IntBuffer ib2) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get program resources"); 
+    }
+
+    @Override
+    public String glGetProgramResourceName(int i, int i1, int i2) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get program resource names"); 
+    }
+
+    @Override
+    public int glGetProgramInterface(int i, int i1, int i2) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get program interface information"); 
+    }
+
+    @Override
+    public void glCopyBufferSubData(int i, int i1, long l, long l1, long l2) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to copy buffer data"); 
+    }
+
+    @Override
+    public String glGetActiveUniformName(int i, int i1) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform names"); 
+    }
+
+    @Override
+    public String glGetActiveUniformBlockName(int i, int i1) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform block names"); 
+    }
+
+    @Override
+    public void glGetActiveUniformBlockiv(int i, int i1, int i2, IntBuffer ib) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform block information"); 
+    }
+
+    @Override
+    public int glGetActiveUniformsi(int i, int i1, int i2) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform information"); 
+    }
+
+    @Override
+    public void glBufferStorage(int i, long l, int i1) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to create storage using glBufferStorage"); 
+    }
+
+    @Override
+    public void glBufferStorage(int i, ByteBuffer bb, int i1) {
+        throw new UnsupportedOperationException("lwjgl2 doesnt allow to create storage using glBufferStorage"); 
+    }
 }
