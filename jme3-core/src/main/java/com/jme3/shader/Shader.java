@@ -355,10 +355,10 @@ public final class Shader extends NativeObject {
                 System.out.println(" - name  : "+lay.getName());
                 System.out.println("    - index : "+lay.getIndex());
                 System.out.println("    - size  : "+lay.getSize());
-                for (BlockFieldLayout blockLay : lay.getFieldLayouts().getArray()) {
-                    VarType type = Type.fromGLConstant(blockLay.getType()).getVarType();
+                for (BlockFieldLayout blockLay : lay.getFieldLayouts()) {
                     System.out.println("       - name     : "+blockLay.getName());
-                    System.out.println("       - type     : "+type);
+                    Type type = Type.fromGLConstant(blockLay.getType());
+                    System.out.println("       - type     : "+(type != null ? type.getVarType() : "unsupported"));
                     System.out.println("       - index    : "+blockLay.getIndex());
                     System.out.println("       - offset   : "+blockLay.getOffset());
                     System.out.println("       - arraySize     : "+blockLay.getArraySize());

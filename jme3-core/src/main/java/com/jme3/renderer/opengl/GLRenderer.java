@@ -1593,7 +1593,7 @@ public final class GLRenderer implements Renderer {
 
     public void updateShaderData(Shader shader) {
         int id = shader.getId();
-        boolean needRegister = false;
+        boolean created = false;
         if (id == -1) {
             // create program
             id = gl.glCreateProgram();
@@ -1602,7 +1602,7 @@ public final class GLRenderer implements Renderer {
             }
 
             shader.setId(id);
-            needRegister = true;
+            created = true;
         }
 
         // If using GLSL 1.5, we bind the outputs for the user
@@ -1653,7 +1653,8 @@ public final class GLRenderer implements Renderer {
                 logger.fine("Shader linked successfully.");
             }
             shader.clearUpdateNeeded();
-            if (needRegister) {
+            if (created) {
+                queryBlockLayouts(shader); 
                 // Register shader for clean up if it was created in this method.
                 objManager.registerObject(shader);
                 statistics.onNewShader();
@@ -1683,7 +1684,7 @@ public final class GLRenderer implements Renderer {
             // sources need an update?
 
             assert shader.getId() > 0;
-
+            
             updateShaderUniforms(shader);
             updateShaderBufferBlocks(shader);
             bindProgram(shader);
@@ -4054,6 +4055,18 @@ public final class GLRenderer implements Renderer {
         HashMap<String, BlockLayout> ssbLayouts = queryShaderStorageBlockLayout(shader.getId());
         shader.setBlockLayouts(ssbLayouts, ubLayouts);
     }
+    
+    private final ArrayList<BlockFieldLayout> tmpLayoutList = new ArrayList<>(32);
+    private final BlockFieldLayoutComparator fieldLayoutComparator = new BlockFieldLayoutComparator();
+    
+    private static class BlockFieldLayoutComparator implements Comparator<BlockFieldLayout> {
+
+        @Override
+        public int compare(BlockFieldLayout t, BlockFieldLayout t1) {
+            return t.getOffset() - t1.getOffset();
+        }
+        
+    }
      
     public HashMap<String, BlockLayout> queryUniformBlockLayout(int id) { 
         if (id == -1) {
@@ -4070,23 +4083,20 @@ public final class GLRenderer implements Renderer {
         for (int i = 0; i < numResources; i++) {
             String name = gl3.glGetActiveUniformBlockName(id, i); 
             
-            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, intBuf1);
-            int numVariables = intBuf1.get(0); 
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, intBuf16);
+            int numVariables = intBuf16.get(0); 
             if (numVariables < 1) {
                 continue;
             }
              
-            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_BINDING, intBuf1);
-            int currentBinding = intBuf1.get(0); 
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_BINDING, intBuf16);
+            int currentBinding = intBuf16.get(0); 
             if (currentBinding < 0) {
                 continue;
             }
             
-            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_DATA_SIZE, intBuf1);
-            int bufferSize = intBuf1.get(0); 
-             
-            BlockLayout ubLayout = new BlockLayout(name, i, bufferSize);
-            ubLayouts.put(name, ubLayout);
+            gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_DATA_SIZE, intBuf16);
+            int bufferSize = intBuf16.get(0); 
             
             if (numVariables > intBufBig.capacity()) {
                 BufferUtils.destroyDirectBuffer(intBufBig);
@@ -4095,6 +4105,7 @@ public final class GLRenderer implements Renderer {
             intBufBig.clear();
             gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, intBufBig);
             
+            tmpLayoutList.clear();
             for (int v = 0; v < numVariables; v++) {
                 int varIndex = intBufBig.get(v);
                 if (varIndex < 0) {
@@ -4109,17 +4120,30 @@ public final class GLRenderer implements Renderer {
                 int varMatStride = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_MATRIX_STRIDE);
                 boolean varMatRowMajor = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_IS_ROW_MAJOR) == 1; 
                  
-                ubLayout.addFieldLayout(new BlockFieldLayout(
+                tmpLayoutList.add(new BlockFieldLayout(
                         varName, varIndex, varOffset, varType, -1, varArrayStride, varArraySize, 
                         varMatStride, 0, 0, varMatRowMajor));
+                
+                //ubLayout.addFieldLayout(new BlockFieldLayout(
+                //        varName, varIndex, varOffset, varType, -1, varArrayStride, varArraySize, 
+                //        varMatStride, 0, 0, varMatRowMajor));
             } 
+            
+            BlockFieldLayout[] layouts = new BlockFieldLayout[tmpLayoutList.size()];
+            for (int l = 0; l < layouts.length; l++) {
+                layouts[l] = tmpLayoutList.get(l);
+            }
+            Arrays.sort(layouts, fieldLayoutComparator);
+             
+            BlockLayout ubLayout = new BlockLayout(layouts, name, i, bufferSize);
+            ubLayouts.put(name, ubLayout);
         } 
         return ubLayouts;
     }
     
     private void getProgramResource(IntBuffer propsBuf, IntBuffer lenBuf, IntBuffer paramsBuf, int shaderId, int index, int props, int progInterface) {
-        propsBuf.put(0, props);
-        lenBuf.put(0, 1);
+        propsBuf.put(0, props).position(0).limit(1);
+        lenBuf.put(0, 1).position(0).limit(1);
         paramsBuf.clear();
         gl4.glGetProgramResource(shaderId, progInterface, index, propsBuf, lenBuf, paramsBuf);
     }
@@ -4152,10 +4176,7 @@ public final class GLRenderer implements Renderer {
             }
                     
             getProgramResource(propsBuf, lenBuf, paramsBuf, id, index, GL4.GL_BUFFER_DATA_SIZE, GL4.GL_SHADER_STORAGE_BLOCK);
-            int bufferSize = paramsBuf.get(0); 
-             
-            BlockLayout ssbLayout = new BlockLayout(name, index, bufferSize);
-            ssbLayouts.put(name, ssbLayout);
+            int bufferSize = paramsBuf.get(0);  
             
             if (numVariables > intBufBig.capacity()) {
                 BufferUtils.destroyDirectBuffer(intBufBig);
@@ -4164,6 +4185,7 @@ public final class GLRenderer implements Renderer {
             intBufBig.clear();
             getProgramResource(propsBuf, lenBuf, intBufBig, id, index, GL4.GL_ACTIVE_VARIABLES, GL4.GL_SHADER_STORAGE_BLOCK);
             
+            tmpLayoutList.clear();
             for (int v = 0; v < numVariables; v++) {
                 int varIndex = intBufBig.get(v);
                 if (varIndex < 0) {
@@ -4190,10 +4212,19 @@ public final class GLRenderer implements Renderer {
                 getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_TOP_LEVEL_ARRAY_STRIDE, GL4.GL_BUFFER_VARIABLE);
                 int varTopLevelArrayStride = paramsBuf.get(0);
                  
-                ssbLayout.addFieldLayout(new BlockFieldLayout(
+                tmpLayoutList.add(new BlockFieldLayout(
                         varName, varIndex, varOffset, varType, varBlockIndex, varArrayStride, varArraySize, 
                         varMatStride, varTopLevelArraySize, varTopLevelArrayStride, varMatRowMajor));
             }
+            
+            BlockFieldLayout[] layouts = new BlockFieldLayout[tmpLayoutList.size()];
+            for (int l = 0; l < layouts.length; l++) {
+                layouts[l] = tmpLayoutList.get(l);
+            }
+            Arrays.sort(layouts, fieldLayoutComparator);
+             
+            BlockLayout ubLayout = new BlockLayout(layouts, name, i, bufferSize);
+            ssbLayouts.put(name, ubLayout);
         }
         return ssbLayouts;
     }
