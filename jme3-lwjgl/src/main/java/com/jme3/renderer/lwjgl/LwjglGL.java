@@ -630,8 +630,8 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     }
 
     @Override
-    public boolean glUnmapBuffer(int i) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to unmap buffers");
+    public boolean glUnmapBuffer(int target) {
+        return GL15.glUnmapBuffer(target);
     }
 
     @Override
@@ -645,52 +645,52 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     }
 
     @Override
-    public void glGetProgramResource(int i, int i1, int i2, IntBuffer ib, IntBuffer ib1, IntBuffer ib2) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get program resources"); 
+    public void glGetProgramResource(int program, int programInterface, int index, IntBuffer props, IntBuffer length, IntBuffer params) {
+        GL43.glGetProgramResource(program, programInterface, index, props, length, params);
     }
 
     @Override
-    public String glGetProgramResourceName(int i, int i1, int i2) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get program resource names"); 
+    public String glGetProgramResourceName(int program, int programInterface, int index) {
+        return GL43.glGetProgramResourceName(program, programInterface, index, 1024);
     }
 
     @Override
-    public int glGetProgramInterface(int i, int i1, int i2) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get program interface information"); 
+    public int glGetProgramInterface(int program, int programInterface, int pname) {
+        return GL43.glGetProgramInterfacei(program, programInterface, pname);
     }
 
     @Override
-    public void glCopyBufferSubData(int i, int i1, long l, long l1, long l2) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to copy buffer data"); 
+    public void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) {
+        GL31.glCopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size);
     }
 
     @Override
-    public String glGetActiveUniformName(int i, int i1) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform names"); 
+    public String glGetActiveUniformName(int program, int uniformIndex) {
+        return GL31.glGetActiveUniformName(program, uniformIndex, 1024);
     }
 
     @Override
-    public String glGetActiveUniformBlockName(int i, int i1) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform block names"); 
+    public String glGetActiveUniformBlockName(int program, int uniformBlockIndex) {
+        return GL31.glGetActiveUniformBlockName(program, uniformBlockIndex, 1024);
     }
 
     @Override
-    public void glGetActiveUniformBlockiv(int i, int i1, int i2, IntBuffer ib) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform block information"); 
+    public void glGetActiveUniformBlockiv(int program, int uniformBlockIndex, int pname, IntBuffer params) {
+        GL31.glGetActiveUniformBlock(program, uniformBlockIndex, pname, params);
     }
 
     @Override
-    public int glGetActiveUniformsi(int i, int i1, int i2) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to get active uniform information"); 
+    public int glGetActiveUniformsi(int program, int uniformIndex, int pname) {
+        return GL31.glGetActiveUniformsi(program, uniformIndex, pname);
     }
 
     @Override
-    public void glBufferStorage(int i, long l, int i1) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to create storage using glBufferStorage"); 
+    public void glBufferStorage(int target, long size, int flags) {
+        GL44.glBufferStorage(target, size, flags);
     }
 
     @Override
-    public void glBufferStorage(int i, ByteBuffer bb, int i1) {
-        throw new UnsupportedOperationException("lwjgl2 doesnt allow to create storage using glBufferStorage"); 
+    public void glBufferStorage(int target, ByteBuffer data, int flags) {
+        GL44.glBufferStorage(target, data, flags);
     }
 }
