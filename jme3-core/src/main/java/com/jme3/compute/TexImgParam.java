@@ -14,7 +14,7 @@ import com.jme3.texture.Texture;
  *
  * @author Alexander Kasigkeit
  */
-public class TexMatParam extends MatParam {
+public class TexImgParam extends MatParam {
 
     protected int imageBindingPoint = ShaderVariable.LOC_UNKNOWN;
     protected Texture.Access access = null;
@@ -24,7 +24,7 @@ public class TexMatParam extends MatParam {
 
     protected boolean configChange = true;
 
-    public TexMatParam(VarType type, String name, Object value, Texture.Access access, int level, int layer, boolean sampler) {
+    public TexImgParam(VarType type, String name, Object value, Texture.Access access, int level, int layer, boolean sampler) {
         super(type, name, value);
         this.access = access;
         this.level = level;

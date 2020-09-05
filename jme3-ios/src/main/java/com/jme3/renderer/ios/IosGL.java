@@ -40,6 +40,7 @@ import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 
 /**
@@ -718,5 +719,20 @@ public class IosGL implements GL, GLExt, GLFbo {
     @Override
     public void glFramebufferTextureLayerEXT(int target, int attachment, int texture, int level, int layer) {
         throw new UnsupportedOperationException("OpenGL ES 2 does not support texture arrays");
+    }
+
+    @Override
+    public void glDeleteQuery(int i) {
+        throw new UnsupportedOperationException("Today is not a good day for this");
+    }
+
+    @Override
+    public void glGetQueryObjectuiv(int i, int i1, IntBuffer ib) {
+        throw new UnsupportedOperationException("Today is not a good day for this");
+    }
+
+    @Override
+    public void glGetQueryObjectui64v(int i, int i1, LongBuffer lb) {
+        throw new UnsupportedOperationException("Today is not a good day for this");
     }
 }

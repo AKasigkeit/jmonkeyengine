@@ -40,6 +40,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 
 public class AndroidGL implements GL, GL2, GLES_30, GLExt, GLFbo {
@@ -726,6 +727,27 @@ public class AndroidGL implements GL, GL2, GLES_30, GLExt, GLFbo {
     @Override
     public boolean glUnmapBuffer(int i) {
         return GLES30.glUnmapBuffer(i);
+    }
+
+    @Override
+    public void glDeleteQuery(int i) {
+        tmpBuff.clear();
+        tmpBuff.put(0, i);
+        tmpBuff.rewind();
+        GLES30.glDeleteQueries(1, tmpBuff);
+    }
+
+    @Override
+    public void glGetQueryObjectuiv(int query, int pname, IntBuffer buff) {
+        GLES30.glGetQueryObjectuiv(query, pname, buff); 
+    }
+
+    @Override
+    public void glGetQueryObjectui64v(int i, int i1, LongBuffer lb) {
+        tmpBuff.clear();
+        tmpBuff.put(0, (int)lb.get(0)); //THIS WONT WORK, but ths method is only used for QueryBuffers which are not supported by our android implementation
+        tmpBuff.rewind();
+        GLES30.glGetQueryObjectuiv(i, i1, tmpBuff); 
     }
 
 }

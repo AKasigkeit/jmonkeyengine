@@ -40,6 +40,7 @@ import org.lwjgl.opengl.*;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 
 /**
@@ -731,5 +732,51 @@ public class LwjglGL extends LwjglRender implements GL, GL2, GL3, GL4 {
     @Override
     public void glBufferStorage(int target, ByteBuffer data, int flags) {
         GL44.glBufferStorage(target, data, flags);
+    }
+
+    @Override
+    public void glDeleteQuery(int i) {
+        GL15.glDeleteQueries(i);
+    }
+    
+    @Override
+    public void glDispatchComputeIndirect(long offset) {
+        GL43.glDispatchComputeIndirect(offset);
+    }
+
+    @Override
+    public Object glFenceSync(int condition, int flags) {
+        return GL32.glFenceSync(condition, flags);
+        
+    }
+
+    @Override
+    public void glDeleteSync(Object sync) {
+        GL32.glDeleteSync((Long)sync);
+    }
+
+    @Override
+    public int glClientWaitSync(Object sync, int flags, long timeout) {
+        return GL32.glClientWaitSync((Long)sync, flags, timeout);
+    }
+
+    @Override
+    public void glGetQueryObjectuiv(int id, int pname, IntBuffer params) {
+        GL15.glGetQueryObjectuiv(id, pname, params);
+    }
+
+    @Override
+    public void glGetQueryObjectui64v(int id, int pname, LongBuffer params) {
+        GL33.glGetQueryObjectui64v(id, pname, params);
+    }
+
+    @Override
+    public void glMultiDrawArraysIndirect(int mode, long offset, int count, int stride) {
+        GL43.glMultiDrawArraysIndirect(mode, offset, count, stride);
+    }
+
+    @Override
+    public void glMultiDrawElementsIndirect(int mode, int type, long offset, int count, int stride) {
+        GL43.glMultiDrawElementsIndirect(mode, type, offset, count, stride);
     }
 }

@@ -31,6 +31,7 @@
  */
 package com.jme3.scene;
 
+import com.jme3.buffer.UntypedBuffer;
 import com.jme3.export.*;
 import com.jme3.math.FastMath;
 import com.jme3.renderer.Renderer;
@@ -316,6 +317,8 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
         }
     }
 
+    protected UntypedBuffer underlyingBuffer = null;
+    
     protected int offset = 0;
     protected int lastLimit = 0;
     protected int stride = 0;
@@ -404,6 +407,55 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
             throw new AssertionError();
         }
         return true;
+    }
+    
+    /**
+     * Returns true if and only if this VertexBuffer is a view on an underlying
+     * UntypedBuffer. Returns false otherwise
+     * 
+     * @return true if this is a view on an untyped buffer
+     */
+    public boolean isViewOnUntypedBuffer() {
+        return underlyingBuffer != null;
+    }
+    
+    /**
+     * Returns this underlying UntypedBuffer if this is a view on one. Returns null 
+     * otherwise
+     * 
+     * @return the underlying untyped buffer if present
+     */
+    public UntypedBuffer getUnderlyingBuffer() {
+        return underlyingBuffer;
+    }
+    
+    /**
+     * Sets up this VertexBuffer as a view on the provided UntypedBuffer
+     * 
+     * @param components num components this VertexAttribute contains
+     * @param format format of this VertexAttrib
+     * @param buffer the buffer to use the data from
+     */
+    public void setupData(int components, Format format, UntypedBuffer buffer) {
+        if (id != -1) {
+            throw new UnsupportedOperationException("Data has already been sent. Cannot setupData again.");
+        }
+        if (format == null || buffer == null) {
+            throw new IllegalArgumentException("None of the arguments can be null");
+        }
+
+        if (bufType != Type.InstanceData) {
+            if (components < 1 || components > 4) {
+                throw new IllegalArgumentException("components must be between 1 and 4");
+            }
+        }
+        
+        this.underlyingBuffer = buffer;
+        this.components = components; 
+        this.format = format;
+        this.componentsLength = components * format.getComponentSize();
+        this.lastLimit = 0;//data.limit();
+        clearUpdateNeeded(); //doesnt ever need update actually
     }
 
     /**
@@ -601,7 +653,12 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
     /**
      * @return The total number of data elements in the data buffer.
      */
-    public int getNumElements() {
+    public int getNumElements() { 
+        if (underlyingBuffer != null) {
+            int size = underlyingBuffer.getSizeOnGpu();
+            return size / stride;
+        }
+        
         if (data == null) {
             return 0;
         }

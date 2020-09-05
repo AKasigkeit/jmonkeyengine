@@ -98,10 +98,6 @@ public class ComputeShaderTestInversion extends SimpleApplication {
         
         shader.run(width, height, localSizeX, localSizeY, MemoryBarrierBits.ALL);
     }
-    
-    @Override
-    public void simpleUpdate(float tpf) { 
-    }
 
     //To keep the example a single file, the shader source is kept here as a string
     //in most cases, this would be put into a .comp file similar to other shaders

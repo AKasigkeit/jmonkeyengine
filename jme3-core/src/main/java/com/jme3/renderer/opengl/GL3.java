@@ -41,6 +41,20 @@ import java.nio.IntBuffer;
  */
 public interface GL3 extends GL2 {
     
+    //for sync objects
+    public static final int GL_SYNC_FLUSH_COMMANDS_BIT = 1;
+    public static final int GL_SYNC_GPU_COMMANDS_COMPLETE = 37143;
+    public static final int GL_ALREADY_SIGNALED = 37146;
+    public static final int GL_TIMEOUT_EXPIRED = 37147;
+    public static final int GL_CONDITION_SATISFIED = 37148;
+    public static final int GL_WAIT_FAILED = 37149;
+    
+    //for query objects
+    public static final int GL_ANY_SAMPLES_PASSED = 35887;
+    public static final int GL_PRIMITIVES_GENERATED = 35975;
+    public static final int GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN = 35976;
+    public static final int GL_TIMESTAMP = 36392;
+    
     public static final int GL_ACTIVE_UNIFORM_BLOCKS = 35382; 
     public static final int GL_UNIFORM_ARRAY_STRIDE = 35388;
     public static final int GL_UNIFORM_SIZE = 35384;
@@ -320,4 +334,31 @@ public interface GL3 extends GL2 {
      * @return the information 
      */
     public int glGetActiveUniformsi(int program, int index, int target);
+    
+    /**
+     * Creates a new Sync Object.
+     * 
+     * @param condition the condition that must be met. MUST be GL_SYNC_GPU_COMMANDS_COMPLETE
+     * @param flags MUST be 0, future extensions might introduce new values
+     * @return a new sync object
+     */
+    public Object glFenceSync(int condition, int flags);
+    
+    /**
+     * Deletes the specified sync object previously generated with glFenceSync().
+     * 
+     * @param sync the sync objec to delete
+     */
+    public void glDeleteSync(Object sync);
+    
+    /**
+     * Blocks the client and waits for the provided sync object to become signaled.
+     * Will return immediately in case it has already been signaled when this method is called
+     * 
+     * @param sync the sync object to wait for
+     * @param flags MUST be GL_SYNC_FLUSH_COMMANDS_BIT
+     * @param timeout max duration in nanoseconds to wait
+     * @return GL_ALREADY_SIGNALED GL_TIMEOUT_EXPIRED GL_CONDITION_SATISFIED or GL_WAIT_FAILED 
+     */
+    public int glClientWaitSync(Object sync, int flags, long timeout); 
 }

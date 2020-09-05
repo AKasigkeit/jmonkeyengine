@@ -41,6 +41,9 @@ import java.nio.IntBuffer;
  */
 public interface GL4 extends GL3 {
     
+    public static final int GL_ANY_SAMPLES_PASSED_CONSERVATIVE = 36202;
+    public static final int GL_QUERY_RESULT_NO_WAIT = 37268;
+    
     //additional byffer typed
     public static final int GL_QUERY_BUFFER = 37266; 
     public static final int GL_DRAW_INDIRECT_BUFFER = 36671;
@@ -181,6 +184,14 @@ public interface GL4 extends GL3 {
     public void glDispatchCompute(int x, int y, int z);
     
     /**
+     * Dispatches the currently bound ComputeShsader with a DispatchCommand read
+     * from the buffer currently bound to dispatchIndirect at the provided offset
+     * 
+     * @param offset offset into dispatch buffer
+     */
+    public void glDispatchComputeIndirect(long offset);
+    
+    /**
      * Binds an Image to an image unit
      * @param unit the unit to bind it to
      * @param texture the id of the texture to bind
@@ -245,4 +256,26 @@ public interface GL4 extends GL3 {
      * @param flags flags for the allocation
      */
     public void glBufferStorage(int target, ByteBuffer buffer, int flags);
+    
+    /**
+     * Reads the specified amount of DrawArraysIndirectCommands from the buffer currently
+     * bound to DRAW_INDIRECT_BUFFER. 
+     * @param mode the mode of the mesh
+     * @param offset the offset into the draw commands buffer
+     * @param drawCount the number of draw commands to read
+     * @param stride the stride of between the start of one command and the next. or 0 for tightly packed
+     */
+    public void glMultiDrawArraysIndirect(int mode, long offset, int drawCount, int stride);
+    
+    
+    /**
+     * Reads the specified amount of DrawElementsIndirectCommands from the buffer currently
+     * bound to DRAW_INDIRECT_BUFFER. 
+     * @param mode the mode of the mesh
+     * @param type the type of the mesh
+     * @param offset the offset into the draw commands buffer
+     * @param drawCount the number of draw commands to read
+     * @param stride the stride of between the start of one command and the next. or 0 for tightly packed
+     */
+    public void glMultiDrawElementsIndirect(int mode, int type, long offset, int drawCount, int stride);
 }

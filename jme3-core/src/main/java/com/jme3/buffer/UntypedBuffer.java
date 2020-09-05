@@ -259,6 +259,21 @@ public class UntypedBuffer extends NativeObject {
     }
 
     /**
+     * Creates a new UntypedBuffer instance using the Storage Api (which
+     * requires Opengl 3.0) but allows for persistent mapping (which requires
+     * OpenGL 4.4) and it will run in lazy mode, ie data will first be sent to
+     * the GPU when it is needed.
+     *
+     * @param mode MemoryMode to use (of of MemoryMode.CpuGpu or
+     * MemoryMode.GpuOnly)
+     * @param flags flags the indicate the usage of the buffer
+     * @return the new UntypedBuffer instance
+     */
+    public static UntypedBuffer createNewStorageLazy(MemoryMode mode, StorageFlag... flags) {
+        return new UntypedBuffer(mode, null, null, flags);
+    }
+
+    /**
      * Creates a new UntypedBuffer instance using the BufferData Api (which does
      * NOT allow for persistent mapping, but is available on all platforms) and
      * will run in direct mode, ie data will be sent to GL the moment the
@@ -330,7 +345,7 @@ public class UntypedBuffer extends NativeObject {
         MEM_MODE = mode;
         RENDERER = renderer;
         BUFFERDATA_USAGE = bdUsage == null ? -1 : bdUsage.getGlConstant();
-        STORAGE_FLAGS = StorageFlag.fromArray(stFlags);
+        STORAGE_FLAGS = StorageFlag.fromArray(stFlags); 
     }
 
     //constructor for destructable copy
@@ -481,7 +496,7 @@ public class UntypedBuffer extends NativeObject {
             updateBuffer = data; //since theres no cpu data buffer, remember this one (if in lazy mode, it will be overridden)
         } else {
             if (offset + updateSize > cpuData.capacity()) { //grow
-                ByteBuffer newBuffer = BufferUtils.createByteBuffer(offset + updateSize);
+                ByteBuffer newBuffer = BufferUtils.createByteBuffer(Math.max(offset + updateSize, data.capacity()));
                 for (int i = 0; i < Math.min(offset, cpuData.capacity()); i++) {
                     newBuffer.put(i, cpuData.get(i));
                 }
@@ -507,73 +522,161 @@ public class UntypedBuffer extends NativeObject {
     /**
      * Retrieves the data from this UntypedBuffer starting at the specified
      * offset and fills the area between the specified store's current position
-     * and its current limit. For CpuGpu-buffers, the content from the
-     * Cpu-Buffer are copied, the Gpu is not involved. For Gpu-Only buffers, the
-     * content is downloaded from the Gpu, however only in direct mode the
-     * buffer will be filled with data right away, UntypedBuffers in lazy mode
-     * will have the download pending until the buffer is used by the renderer
-     * next time
+     * and its current limit.The content is downloaded from the Gpu, however
+     * only in direct mode the buffer will be filled with data right away,
+     * UntypedBuffers in lazy mode will have the download pending until the
+     * buffer is used by the renderer next time in which case requesting another
+     * download will override the current request
      *
      * @param store the ByteBuffer to store the data in (between its current
      * position and limit)
      * @param offset the offset into this UntypedBuffer to start reading values
      * from
      */
-    public void getData(ByteBuffer store, int offset) {
-        if (MEM_MODE == MemoryMode.CpuGpu) { //got the data on the cpu, just copy it
-            int copy = store.limit() - store.position();
-            for (int i = 0; i < copy; i++) {
-                store.put(store.position() + i, cpuData.get(offset + i));
-            }
-        } else {
-            downloadBuffer = store;
-            downloadOffset = offset;
-            downloadSize = store.limit() - store.position();
-            downloadPosition = store.position();
-            if (isDirect()) {
-                RENDERER.updateBuffer(this);
-            }
+    public void downloadData(ByteBuffer store, int offset) {
+        if (MEM_MODE != MemoryMode.GpuOnly) {
+            throw new UnsupportedOperationException("This method can only be used with GPU-Only buffers");
+        }
+
+        downloadBuffer = store;
+        downloadOffset = offset;
+        downloadSize = store.limit() - store.position();
+        downloadPosition = store.position();
+        if (isDirect()) {
+            RENDERER.updateBuffer(this);
         }
     }
-    
+
+    public void downloadData(int offset, int length) {
+        if (MEM_MODE != MemoryMode.CpuGpu) {
+            throw new UnsupportedOperationException("This method can only be used with CpuGpu buffers");
+        }
+
+        downloadBuffer = cpuData;
+        downloadOffset = offset;
+        downloadSize = length;
+        downloadPosition = offset;
+        if (isDirect()) {
+            RENDERER.updateBuffer(this);
+        }
+    }
+
+    /**
+     * Returns true if this buffers size was change and still needs to be
+     * changed accordingly on the GPU
+     *
+     * @return true if this buffer has a size change pending for the GPU buffer
+     */
     public boolean hasPendingSizeChange() {
         return sizeChanged;
     }
-    
+
+    /**
+     * In case this buffers size was changed and the GPU didnt yet pick up the
+     * change, returns the size the buffer currently has on the GPU and
+     * previously had on the CPU also
+     *
+     * @return previus size of the buffer in case the size changed
+     */
     public int getPendingSizeChangePreviousSize() {
         return previousGpuSize;
     }
-    
+
+    @Override
+    public void clearUpdateNeeded() {
+        super.clearUpdateNeeded();
+        sizeChanged = false;
+    }
+
+    /**
+     * Returns true if this buffer has any updates still to be uploaded to the
+     * GPU
+     *
+     * @return true in case any updates for the GPU buffer are pending
+     */
     public boolean hasPendingUpdate() {
         return updateOffset != -1;
     }
-    
+
+    /**
+     * Returns the offset to start writing the update into the GPU buffer in
+     * case any update is pending, or -1 otherwise
+     *
+     * @return
+     */
     public int getPendingUpdateOffset() {
         return updateOffset;
     }
-    
+
+    /**
+     * Returns the buffer that should be used for the upload to the GPU. In case
+     * of CpuGpu buffers, this is the CPU-side of the buffer. In case of
+     * GPU-Only buffers, this is the buffer that was set to update the data
+     *
+     * @return the buffer used for updating the GPU buffer
+     */
     public ByteBuffer getPendingUpdateBuffer() {
-        return updateBuffer;
+        if (updateBuffer != null) { //if we got the update buffer, it has its data for the update stored at its position
+            return updateBuffer;
+        } else { //cpuBuffer might have the position anywhere, set it accordingly
+            cpuData.position(updatePosition);
+            cpuData.limit(updatePosition + updateSize);
+            return cpuData;
+        }
     }
-    
+
+    /**
+     * INTERNAL USE ONLY. Clears any pending update flags to make sure same data
+     * will not be uploaded more than once
+     */
     public void clearPendingUpdate() {
-        
+        updateOffset = -1;
+        updatePosition = -1;
+        updateSize = -1;
+        updateBuffer = null;
     }
-    
+
+    /**
+     * Returns true if this buffer has any pending downloads (that is loading
+     * data back from the GPU). Can only be true for GPU-Only buffers, because
+     * CpuGpu-buffers will copy the contents from the CPU right away and never
+     * have anything pending
+     *
+     * @return true if this buffer has any pending download
+     */
     public boolean hasPendingDownload() {
         return downloadOffset != -1;
     }
-    
+
+    /**
+     * Returns the offset into the buffer on the GPU to start downloading data
+     * from, or -1 if no downloading is pending
+     *
+     * @return offset into GPU buffer so tart reading data
+     */
     public int getPendingDownloadOffset() {
         return downloadOffset;
     }
-    
+
+    /**
+     * Returns the buffer to store the data downloaded from the GPU in or null
+     * if no download is pending
+     *
+     * @return buffer to store downloaded data in
+     */
     public ByteBuffer getPendingDownloadBuffer() {
         return downloadBuffer;
     }
-    
+
+    /**
+     * INTERNAL USE ONLY. Clears any pending downloads to make sure same data is
+     * not downloaded more than once
+     */
     public void clearPendingDownload() {
-        
+        downloadOffset = -1;
+        downloadPosition = -1;
+        downloadSize = -1;
+        downloadBuffer = null;
     }
 
     /**
@@ -592,7 +695,7 @@ public class UntypedBuffer extends NativeObject {
      *
      * @return this buffers memory mode
      */
-    public MemoryMode getMode() {
+    public MemoryMode getMemoryMode() {
         return MEM_MODE;
     }
 
@@ -742,7 +845,7 @@ public class UntypedBuffer extends NativeObject {
             this.offset = offset;
             this.length = length;
             this.buffer = directBuffer;
-            this.flags = mappingFlags;
+            this.flags = mappingFlags; 
         }
 
         /**
@@ -818,7 +921,7 @@ public class UntypedBuffer extends NativeObject {
         if (gpuSize < 4) {
             throw new UnsupportedOperationException("To create an AtomicCounterBuffer, the UntypedBuffers size must be at least 4 bytes (1 int)");
         }
-        return null;
+        return new AtomicCounterBuffer(this, binding);
     }
 
     /**
@@ -829,19 +932,33 @@ public class UntypedBuffer extends NativeObject {
      * @return a new DispatchIndirectBuffer view on this buffer
      */
     public DispatchIndirectBuffer asDispatchIndirectBuffer() {
-        return null;
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+        if (gpuSize < 12) {
+            throw new UnsupportedOperationException("To create an DispatchIndirectBuffer, the UntypedBuffers size must be at least 12 bytes (3 ints)");
+        }
+        return new DispatchIndirectBuffer(this);
     }
 
     /**
-     * Creates a DrawIndirectBuffer view on this UntypedBuffer.
-     * DrawIndirectBuffers can be used to store large number of draw commands on
-     * the GPU to reduce driver overhead or to do some sort of dynamic batching
-     * and instancing with a single draw call.
+     * Creates a DrawIndirectBuffer view on this
+     * UntypedBuffer.DrawIndirectBuffers can be used to store large number of
+     * draw commands on the GPU to reduce driver overhead or to do some sort of
+     * dynamic batching and instancing with a single draw call.
      *
+     * @param mode the DrawIndirectMode to use (to specify using IndexBuffers or
+     * not)
      * @return a new DrawIndirectBuffer view on this buffer
      */
-    public DrawIndirectBuffer asDrawIndirectBuffer() {
-        return null;
+    public DrawIndirectBuffer asDrawIndirectBuffer(DrawIndirectBuffer.DrawIndirectMode mode) {
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+        if (gpuSize < (mode == DrawIndirectBuffer.DrawIndirectMode.Draw ? 16 : 20)) {
+            throw new UnsupportedOperationException("To create an DrawIndirectBuffer, the UntypedBuffers size must be at least 16/20 bytes (4/5 ints)");
+        }
+        return new DrawIndirectBuffer(this, mode);
     }
 
     /**
@@ -854,7 +971,13 @@ public class UntypedBuffer extends NativeObject {
      * @return a new QueryBuffer view on this buffer
      */
     public QueryBuffer asQueryBuffer() {
-        return null;
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+        if (gpuSize < 4) {
+            throw new UnsupportedOperationException("To create an QueryBuffer, the UntypedBuffers size must be at least 4 bytes (1 int)");
+        }
+        return new QueryBuffer(this);
     }
 
     /**
@@ -862,41 +985,88 @@ public class UntypedBuffer extends NativeObject {
      * SSBOs can be used to store large amounts of data on the GPU and make them
      * available to shaders.
      *
+     * @param writer null for autolayout, otherwise specify to do manual layout
      * @return a new ShaderStorageBuffer view on this buffer
      */
-    public ShaderStorageBuffer asShaderStorageBuffer() {
-        return null;
+    public ShaderStorageBuffer asShaderStorageBuffer(FieldBuffer.FieldBufferWriter writer) {
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+        return new ShaderStorageBuffer(this, writer);
     }
 
     /**
-     * Creates a new UniformBuffer (UBO) view on this UntypedBuffer. UBOs are
+     * Creates a new UniformBuffer (UBO) view on this UntypedBuffer.UBOs are
      * used to combine several uniform uploads into a single call and to reduce
      * the amount of data to upload by sharing the content between shaders. If
      * you have a Uniform that most shaders need (say LightDirection and
      * LightColor), instead of uploading 2 Uniforms for each mesh to draw, you
      * can upload a buffer containing both fields once and use them in all draw
-     * commands
+     * commands. If writer is null, GL will be queried for the layout of the
+     * buffer and the fields will be written accordingly. Otherwise the writer
+     * will be used to write fields into the buffer
      *
+     * @param writer null for autolayout, otherwise specify to do manual layout
      * @return a new UniformBuffer view on this buffer
      */
-    public UniformBuffer asUniformBuffer() {
-        return null;
+    public UniformBuffer asUniformBuffer(FieldBuffer.FieldBufferWriter writer) {
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+        return new UniformBuffer(this, writer);
+    }
+
+    /**
+     * Creates a new IndexBuffer (IBO) view on this UntypedBuffer. IBOs tell how
+     * to connect the vertices in the VertexBuffers, similar to "Connect the
+     * Dots"
+     *
+     * @param format format of the IBO (either unsigned byte, unsigned short or
+     * unsigned int)
+     * @return a new IndexBuffer view on this buffer
+     */
+    public VertexBuffer asIndexBuffer(VertexBuffer.Format format) {
+        return asVertexBuffer(VertexBuffer.Type.Index, format, 1, 0, 0);
     }
 
     /**
      * Creates a new VertexBuffer (VBO) view on this UntypedBuffer. VBOs tell
      * which data will be available to the VertexShader and how to interpret
-     * that data. Useful especially if you also have a ShaderStorageBuffer view
+     * that data.Useful especially if you also have a ShaderStorageBuffer view
      * on this same UntypedBuffer, update the data of this UntypedBuffer via the
      * ShaderStorageBuffer-view in a ComputeShader and use it in your
      * VertexShader via VBO to render what was just calculated in the
      * ComputeShader (think ParticleSystem, any sort of simulation / animation
      * etc)
      *
+     * @param type the type of the VertexBuffer
+     * @param format the format of the VertexBuffer
+     * @param components the number of its components
+     * @param stride the stride in bytes for one block of vertex data
+     * @param offset the offset into the block of vertex data, this VertexBuffer
+     * starts from
      * @return a new VertexBuffer view on this buffer
      */
-    public VertexBuffer asVertexBuffer() {
-        return null;
+    public VertexBuffer asVertexBuffer(VertexBuffer.Type type, VertexBuffer.Format format, int components, int stride, int offset) {
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+
+        VertexBuffer vb = new VertexBuffer(type);
+        vb.setupData(components, format, this);
+        vb.setOffset(offset);
+        vb.setStride(stride);
+        return vb;
+    }
+
+    /**
+     * Used by QueryBuffers to directly access the renderer for more
+     * userfriendly QueryBuffer usage like queryBuffer.storeResult(query);
+     *
+     * @return
+     */
+    protected Renderer getRenderer() {
+        return RENDERER;
     }
 
     //NATIVE OBJECT METHODS

@@ -34,6 +34,7 @@ package com.jme3.renderer.opengl;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 
 /**
@@ -57,6 +58,8 @@ public interface GL {
         GL_FLOAT_VEC4        = 0x8B52,
         GL_FLOAT_MAT3        = 0x8B5B,
         GL_FLOAT_MAT4        = 0x8B5C;
+    
+    public static final int GL_SAMPLES_PASSED = 35092;
     
     
     public static final int GL_ALPHA = 0x1906;
@@ -611,6 +614,13 @@ public interface GL {
      * @param textures contains {@code n} names of texture objects to be deleted.
      */
     public void glDeleteTextures(IntBuffer textures);
+    
+    /**
+     * Deletes the specified Query from the GPU
+     * 
+     * @param query the query to delete 
+     */
+    public void glDeleteQuery(int query);
 
     /**
      * <p><a target="_blank" href="http://docs.gl/gl4/glDepthFunc">Reference Page</a></p>
@@ -875,6 +885,32 @@ public interface GL {
      * @param pname the symbolic name of a query object parameter. One of:<br><table><tr><td>{@link #GL_QUERY_RESULT QUERY_RESULT}</td><td>{@link #GL_QUERY_RESULT_AVAILABLE QUERY_RESULT_AVAILABLE}</td></tr></table>
      */
     public int glGetQueryObjectiv(int query, int pname);
+    
+    /**
+     * <p><a target="_blank" href="http://docs.gl/gl4/glGetQueryObject">Reference Page</a></p>
+     * <p>
+     * Stores the unsigned integer value of a query object parameter in the provided IntBuffer or
+     * interprets the IntBuffer as offset into QueryBuffer in case such buffer is currently
+     * bound.
+     *
+     * @param query the name of a query object
+     * @param pname the symbolic name of a query object parameter. One of:<br><table><tr><td>{@link #GL_QUERY_RESULT QUERY_RESULT}</td><td>{@link #GL_QUERY_RESULT_AVAILABLE QUERY_RESULT_AVAILABLE}</td></tr></table>
+     * @param params where to store the result
+     */
+    public void glGetQueryObjectuiv(int query, int pname, IntBuffer params);
+    
+    /**
+     * <p><a target="_blank" href="http://docs.gl/gl4/glGetQueryObject">Reference Page</a></p>
+     * <p>
+     * Stores the unsigned long value of a query object parameter in the provided IntBuffer or
+     * interprets the IntBuffer as offset into QueryBuffer in case such buffer is currently
+     * bound.
+     *
+     * @param query the name of a query object
+     * @param pname the symbolic name of a query object parameter. One of:<br><table><tr><td>{@link #GL_QUERY_RESULT QUERY_RESULT}</td><td>{@link #GL_QUERY_RESULT_AVAILABLE QUERY_RESULT_AVAILABLE}</td></tr></table>
+     * @param params where to store the result
+     */
+    public void glGetQueryObjectui64v(int query, int pname, LongBuffer params);
 
     /**
      * <p><a target="_blank" href="http://docs.gl/gl4/glGetShader">Reference Page</a></p>

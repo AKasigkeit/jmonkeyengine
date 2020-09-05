@@ -31,10 +31,14 @@
  */
 package com.jme3.system;
 
+import com.jme3.buffer.DispatchIndirectBuffer;
+import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
 import com.jme3.buffer.UntypedBuffer;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
+import com.jme3.conditional.GpuQuery;
+import com.jme3.conditional.SyncObject;
 import com.jme3.light.LightList;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
@@ -271,6 +275,10 @@ public class NullRenderer implements Renderer {
     @Override
     public void runComputeShader(ComputeShader shader, int x, int y, int z) { 
     }
+    
+    @Override
+    public void runComputeShader(ComputeShader shader, DispatchIndirectBuffer buffer, int offset) { 
+    }
 
     @Override
     public void getLocalWorkGroupSize(ComputeShader shader, int[] store) { 
@@ -316,5 +324,48 @@ public class NullRenderer implements Renderer {
 
     @Override
     public void queryBlockLayouts(Shader shader) {
+    }
+
+    @Override
+    public void deleteQuery(GpuQuery query) { 
+    }
+
+    @Override
+    public long getQueryResult(GpuQuery query) {
+        return 0L;
+    }
+
+    @Override
+    public boolean isQueryResultAvailable(GpuQuery query) {
+        return true;
+    }
+    
+    @Override
+    public void startQuery(GpuQuery query) { 
+    }
+    
+    @Override
+    public void stopQuery(GpuQuery query) { 
+    }
+
+    @Override
+    public void getQueryResult(QueryBuffer buffer, GpuQuery query, int offset, boolean bits64, boolean wait) { 
+    }
+
+    @Override
+    public void getQueryResultAvailability(QueryBuffer buffer, GpuQuery query, int offset) { 
+    }
+
+    @Override
+    public void placeSyncObject(SyncObject sync) { 
+    }
+
+    @Override
+    public SyncObject.Signal checkSyncObject(SyncObject sync) { 
+        return null;
+    }
+
+    @Override
+    public void recycleSyncObject(SyncObject sync) { 
     }
 }

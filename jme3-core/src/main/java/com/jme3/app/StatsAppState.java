@@ -238,7 +238,8 @@ public class StatsAppState extends AbstractAppState {
             frameCounter ++;
             if (secondCounter >= 1.0f) {
                 int fps = (int) (frameCounter / secondCounter);
-                fpsText.setText("Frames per second: " + fps);
+                float tpfAvg = 1f / fps;
+                fpsText.setText("Frames per second: " + fps+" = "+tpfAvg);
                 secondCounter = 0.0f;
                 frameCounter = 0;
             }

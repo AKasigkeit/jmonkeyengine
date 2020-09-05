@@ -31,10 +31,14 @@
  */
 package com.jme3.renderer;
 
+import com.jme3.buffer.DispatchIndirectBuffer;
+import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
 import com.jme3.buffer.UntypedBuffer;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
+import com.jme3.conditional.GpuQuery;
+import com.jme3.conditional.SyncObject;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.scene.Mesh;
@@ -448,7 +452,7 @@ public interface Renderer {
      * Returns the time in nano seconds elapsed for the task with the given id.
      * Note that the result may not be available right after stopProfiling has been called.
      * You need to check if the result is available with isTaskResultAvailable.
-     * Also note that it's guaranteed that the result will be available on next frame.
+     * Also note that it's guaranteed that the result will be available on next frame. (UPDATE 09/2020 not neccessarily true - AKasigkeit)
      * If you use getProfilingTime on the next frame you called stopProfiling, you don't need to check the result availability with isTaskResultAvailable
      *
      * @param taskId the id of the task given by startProfiling.
@@ -496,6 +500,16 @@ public interface Renderer {
      * @param z work group count in z dimension 
      */
     public void runComputeShader(ComputeShader shader, int x, int y, int z);
+    
+    /**
+     * Runs the specified COmputeShader using the provided DispatchIndirectBuffer
+     * reading the DispatchCommand from the provided offset.
+     * 
+     * @param shader the shader to run
+     * @param buffer the buffer to read the dispatch command from
+     * @param offset the offset in bytes into the buffer to read the command from
+     */
+    public void runComputeShader(ComputeShader shader, DispatchIndirectBuffer buffer, int offset);
     
     /**
      * Returns the local work group size of the provided ComputeShader.
@@ -568,4 +582,100 @@ public interface Renderer {
      * @param shader shader to query layout of
      */
     public void queryBlockLayouts(Shader shader);
+    
+    /**
+     * Starts the provided GpuQuery. Queries can be reused, however upon
+     * stopping a GpuQuery, and previous results will be lost and trying to that
+     * GpuQuery's result then will turn into a blocking call in case the commands
+     * between the last start and stop have not yet been finished.
+     * 
+     * @param query the GpuQuery to start
+     */
+    public void startQuery(GpuQuery query);
+    
+    /**
+     * Stops the provided GpuQuery. Just stopping it does not mean its result
+     * is available right away. Check for the results availability using
+     * isQueryResultAvailable(), dependant on the User's setup, it might take 2
+     * or even 3 frames for a GpuQueries result to become available to the CPU
+     * 
+     * @param query the GpuQuery to stop
+     */
+    public void stopQuery(GpuQuery query);
+    
+    /**
+     * Deletes the specified GpuQuery from the GPU.
+     * 
+     * @param query the query to delete
+     */
+    public void deleteQuery(GpuQuery query);
+    
+    /**
+     * Queries the GPU for the provided queries result. If the result is not 
+     * available yet (because GPU and GPU run in parallel), this will turn into
+     * a blocking call, waiting for the GPU to finish the job, load back the
+     * result and return it. Use isQueryResultAvailable(query) to check if the 
+     * result is available
+     * 
+     * @param query the query to get the result of
+     * @return result of the provided query
+     */
+    public long getQueryResult(GpuQuery query);
+    
+    /**
+     * Checks if the result for the provided GpuQuery is already available. 
+     * This will flush the GL pipeline to ensure any previously issued rendering 
+     * will complete in finite time
+     * 
+     * @param query the query to check the results availablity of
+     * @return true in case the result is available without stalling the GPU.
+     * 
+     */
+    public boolean isQueryResultAvailable(GpuQuery query);
+    
+    /**
+     * Stores the Query result in the provided QueryBuffer at the speicifed offset
+     * in bytes
+     * 
+     * @param buffer the buffer to store it in
+     * @param query the query of interest
+     * @param offset the offset to start writing data
+     * @param bits64 true to write unsigned long, false for unsigned int
+     * @param wait true to wait in case the result if not available.
+     */
+    public void getQueryResult(QueryBuffer buffer, GpuQuery query, int offset, boolean bits64, boolean wait);
+    
+    /**
+     * Store the query results availability in the provided QueryBuffer at the
+     * specified offset in bytes. 
+     * 
+     * @param buffer the buffer to store it in
+     * @param query the query of interest
+     * @param offset the offset to start writing data
+     */
+    public void getQueryResultAvailability(QueryBuffer buffer, GpuQuery query, int offset);
+    
+    /**
+     * Places the provided SyncObject. Can be used to check if previously started
+     * GL commands have been processed already.
+     * 
+     * @param sync the sync objec to place
+     */
+    public void placeSyncObject(SyncObject sync);
+    
+    /**
+     * Checks the current state of the SyncObject. 
+     * 
+     * @param sync the SyncObject to check
+     * @return the current signal
+     */
+    public SyncObject.Signal checkSyncObject(SyncObject sync); 
+    
+    /**
+     * Recycles the provided SyncObject so it can be used again in another
+     * placeSyncObject() call.
+     * 
+     * @param sync the SyncObject to recycle
+     */
+    public void recycleSyncObject(SyncObject sync);
 }

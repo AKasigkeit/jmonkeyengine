@@ -5,6 +5,11 @@
  */
 package com.jme3.compute;
 
+import com.jme3.buffer.AtomicCounterBuffer;
+import com.jme3.buffer.DispatchIndirectBuffer;
+import com.jme3.buffer.ShaderStorageBuffer;
+import com.jme3.buffer.TypedBuffer;
+import com.jme3.buffer.UniformBuffer;
 import com.jme3.material.MatParam;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
@@ -37,7 +42,7 @@ public class ComputeShader {
     private Shader shader = null;
     private final List<String> BUFFER_DEFINITIONS = new ArrayList<>(4);
 
-    private final ListMap<String, TexMatParam> TEXTURES = new ListMap<>();
+    private final ListMap<String, TexImgParam> TEXTURES = new ListMap<>();
     private final ListMap<String, Define> DEFINES = new ListMap<>();
     private final ListMap<String, MatParam> UNIFORMS = new ListMap<>();
     private final ListMap<String, MatParam> BUFFERS = new ListMap<>();
@@ -309,9 +314,9 @@ public class ComputeShader {
         if (!type.isTextureType()) {
             throw new IllegalArgumentException("provided vartype is no texture type: " + type);
         }
-        TexMatParam p = TEXTURES.get(name);
+        TexImgParam p = TEXTURES.get(name);
         if (p == null) {
-            p = new TexMatParam(type, name, value, access, level, layer, isTexture);
+            p = new TexImgParam(type, name, value, access, level, layer, isTexture);
             TEXTURES.put(name, p);
         } else {
             p.update(access, level, layer, isTexture, value);
@@ -325,6 +330,28 @@ public class ComputeShader {
      */
     public void removeTextureOrImage(String name) {
         TEXTURES.remove(name);
+    }
+
+    public void setShaderStorageBuffer(String name, ShaderStorageBuffer buffer) {
+        setBuffer(name, buffer);
+    }
+
+    public void setUniformBuffer(String name, UniformBuffer buffer) {
+        setBuffer(name, buffer);
+    }
+
+    public void setAtomicCouterBuffer(String name, AtomicCounterBuffer buffer) {
+        setBuffer(name, buffer);
+    }
+
+    private void setBuffer(String name, TypedBuffer buffer) {
+        MatParam p = BUFFERS.get(name);
+        if (p == null) {
+            p = new MatParam(VarType.BufferObject, name, buffer);
+            BUFFERS.put(name, p);
+        } else {
+            p.setValue(buffer);
+        }
     }
 
     /**
@@ -393,6 +420,21 @@ public class ComputeShader {
         int y = (int) Math.ceil(totalY / (double) localY);
         int z = (int) Math.ceil(totalZ / (double) localZ);
         run(x, y, z, memBarrier);
+    }
+
+    /**
+     * Dispatches this ComputeShader using the specified DispatchCommand
+     *
+     * @param command the DispatchCommand containing the work group counts
+     * @param memBarrier the memory barrier to set
+     */
+    public void run(DispatchCommand command, MemoryBarrierBits memBarrier) {
+        run(command.getNumGroupsX(), command.getNumGroupsY(), command.getNumGroupsZ(), memBarrier);
+    }
+
+    public void run(DispatchIndirectBuffer buffer, int offset, MemoryBarrierBits memBarrier) {
+        createIfNeeded();
+        FACTORY.run(this, buffer, offset, memBarrier);
     }
 
     /**
@@ -517,7 +559,7 @@ public class ComputeShader {
      *
      * @return ListMap of Textures and Images
      */
-    public ListMap<String, TexMatParam> getTextures() {
+    public ListMap<String, TexImgParam> getTextures() {
         return TEXTURES;
     }
 

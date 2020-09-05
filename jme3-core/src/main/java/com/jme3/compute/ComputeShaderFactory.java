@@ -6,6 +6,7 @@
 package com.jme3.compute;
 
 import com.jme3.asset.AssetManager;
+import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.Limits;
 import com.jme3.renderer.Renderer;
@@ -69,7 +70,12 @@ public class ComputeShaderFactory {
         return new ComputeShader(this, sourceCode, language, null);
     }
 
-    protected void run(ComputeShader computeShader, int x, int y, int z, MemoryBarrierBits bits) { 
+    protected void run(ComputeShader computeShader, DispatchIndirectBuffer buffer, int offset, MemoryBarrierBits bits) {
+        RENDERER.runComputeShader(computeShader, buffer, offset);
+        RENDERER.memoryBarrier(bits);
+    }
+
+    protected void run(ComputeShader computeShader, int x, int y, int z, MemoryBarrierBits bits) {
         RENDERER.runComputeShader(computeShader, x, y, z);
         RENDERER.memoryBarrier(bits);
     }

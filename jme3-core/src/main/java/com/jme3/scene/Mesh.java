@@ -33,6 +33,7 @@ package com.jme3.scene;
 
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bounding.BoundingVolume;
+import com.jme3.buffer.DrawIndirectBuffer;
 import com.jme3.collision.Collidable;
 import com.jme3.collision.CollisionResults;
 import com.jme3.collision.bih.BIHTree;
@@ -196,6 +197,11 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
 
     private int[] elementLengths;
     private int[] modeStart;
+    
+    private DrawIndirectBuffer drawIndirectBuffer = null;
+    private long drawIndirectOffset = 0L;
+    private int drawIndirectCount = 0;
+    private int drawIndirectStride = 0;
 
     private Mode mode = Mode.Triangles;
 
@@ -524,6 +530,40 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
                 tangents.setUpdateNeeded();
             }
         }
+    }
+    
+    public boolean isDrawIndirect() {
+        return drawIndirectBuffer != null;
+    }
+    
+    public void removeDrawIndirectBuffer() {
+        drawIndirectBuffer = null;
+    }
+    
+    public void setDrawIndirectBuffer(DrawIndirectBuffer buffer) {
+        drawIndirectBuffer = buffer;
+    }
+    
+    public void setDrawIndirectParameters(long offset, int stride, int cmdCount) {
+        drawIndirectOffset = offset;
+        drawIndirectStride = stride;
+        drawIndirectCount = cmdCount;
+    }
+    
+    public DrawIndirectBuffer getDrawIndirectBuffer() {
+        return drawIndirectBuffer;
+    }
+    
+    public long getDrawIndirectOffset() {
+        return drawIndirectOffset;
+    }
+    
+    public int getDrawIndirectStride() {
+        return drawIndirectStride;
+    }
+    
+    public int getDrawIndirectCount() {
+        return drawIndirectCount;
     }
 
     /**
@@ -860,10 +900,22 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
         VertexBuffer pb = getBuffer(Type.Position);
         VertexBuffer ib = getBuffer(Type.Index);
         if (pb != null) {
-            vertCount = pb.getData().limit() / pb.getNumComponents();
+            //if (pb.isViewOnUntypedBuffer()) {
+                //should work for both cases
+                vertCount = pb.getNumElements();
+            //} else {
+            //    vertCount = pb.getData().limit() / pb.getNumComponents();
+            //}
         }
         if (ib != null) {
-            elementCount = computeNumElements(ib.getData().limit());
+            int numIndices;
+            if (ib.isViewOnUntypedBuffer()) {
+                int stride = ib.getStride() != 0 ? ib.getStride() : ib.getFormat().getComponentSize();
+                numIndices = ib.getUnderlyingBuffer().getSizeOnGpu() / stride;
+            } else {
+                numIndices = ib.getData().limit();
+            } 
+            elementCount = computeNumElements(numIndices);
         } else {
             elementCount = computeNumElements(vertCount);
         }

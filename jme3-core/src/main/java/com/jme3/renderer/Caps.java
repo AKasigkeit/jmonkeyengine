@@ -446,7 +446,38 @@ public enum Caps {
     /**
      * Implementation provides access to ComputeShaders
      */
-    ComputeShader
+    ComputeShader,
+    
+    /**
+     * Implementation supports buffers_storage, ie persistently mapped buffers
+     */
+    BufferStorage,
+    
+    /**
+     * Implementation supports Sync Objects
+     */
+    SyncObjects,
+    
+    /**
+     * Implementation supports MultiDrawIndirect
+     */
+    MultiDrawIndirect,
+    
+    /**
+     * Implementation supports mapping buffers
+     */
+    MapBuffer,
+    
+    /**
+     * Implementation supports imageLoad and imageStore operations
+     */
+    ImageLoadStore,
+    
+    /**
+     * Implementation supports loading query results into a special buffer without
+     * loading it back to CPU
+     */
+    QueryBuffer
     ;
 
     /**

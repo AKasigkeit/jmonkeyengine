@@ -31,6 +31,8 @@
  */
 package com.jme3.shader;
 
+import com.jme3.buffer.TypedBuffer;
+
 /**
  * Implementation of shader's buffer block.
  *
@@ -42,6 +44,37 @@ public class ShaderBufferBlock extends ShaderVariable {
      * Current used buffer object.
      */
     protected BufferObject bufferObject;
+    
+    protected TypedBuffer typedBuffer;
+    
+    private int index = ShaderVariable.LOC_UNKNOWN;
+    
+    private int boundUnit = -1;
+    
+    public void setTypedBuffer(TypedBuffer buffer) {
+        typedBuffer = buffer;
+        updateNeeded = true;
+    }
+    
+    public TypedBuffer getTypedBuffer() {
+        return typedBuffer;
+    }
+    
+    public int getIndex() {
+        return index;
+    }
+    
+    public void setIndex(int index) {
+        this.index = index;
+    }
+    
+    public int getBoundUnit() {
+        return boundUnit;
+    }
+    
+    public void setBoundUnit(int unit) {
+        boundUnit = unit;
+    }
 
     /**
      * Set the new buffer object.

@@ -32,12 +32,17 @@
 package com.jme3.renderer.opengl;
 
 import com.jme3.buffer.AtomicCounterBuffer;
+import com.jme3.buffer.DispatchIndirectBuffer;
+import com.jme3.buffer.DrawIndirectBuffer;
 import com.jme3.buffer.FieldBuffer;
+import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
 import com.jme3.buffer.UntypedBuffer;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.MemoryBarrierBits;
-import com.jme3.compute.TexMatParam;
+import com.jme3.compute.TexImgParam;
+import com.jme3.conditional.GpuQuery;
+import com.jme3.conditional.SyncObject;
 import com.jme3.material.MatParam;
 import com.jme3.material.RenderState;
 import com.jme3.material.RenderState.BlendFunc;
@@ -80,6 +85,7 @@ import jme3tools.shader.ShaderDebug;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import java.util.*;
 import java.util.logging.Level;
@@ -96,6 +102,7 @@ public final class GLRenderer implements Renderer {
 
     private final ByteBuffer nameBuf = BufferUtils.createByteBuffer(250);
     private final StringBuilder stringBuf = new StringBuilder(250);
+    private final LongBuffer longBuf1 = BufferUtils.createByteBuffer(8).asLongBuffer();
     private final IntBuffer intBuf1 = BufferUtils.createIntBuffer(1);
     private final IntBuffer intBuf1_2 = BufferUtils.createIntBuffer(1);
     private final IntBuffer intBuf16 = BufferUtils.createIntBuffer(16);
@@ -105,6 +112,9 @@ public final class GLRenderer implements Renderer {
     private final NativeObjectManager objManager = new NativeObjectManager();
     private final EnumSet<Caps> caps = EnumSet.noneOf(Caps.class);
     private final EnumMap<Limits, Integer> limits = new EnumMap<Limits, Integer>(Limits.class);
+    
+    private final ArrayList<BlockFieldLayout> tmpLayoutList = new ArrayList<>(32);
+    private final BlockFieldLayoutComparator fieldLayoutComparator = new BlockFieldLayoutComparator();
 
     private FrameBuffer mainFbOverride = null;
     private final Statistics statistics = new Statistics();
@@ -161,7 +171,7 @@ public final class GLRenderer implements Renderer {
             }
         } else {
             extensionSet.addAll(Arrays.asList(gl.glGetString(GL.GL_EXTENSIONS).split(" ")));
-        }
+        } 
         return extensionSet;
     }
 
@@ -547,7 +557,28 @@ public final class GLRenderer implements Renderer {
             limits.put(Limits.ComputeShaderMaxWorkGroupSizeZ, getInteger(GL4.GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2));
         }
         
-        if (caps.contains(Caps.OpenGL42)) {
+        if (hasExtension("GL_ARB_buffer_storage") || caps.contains(Caps.OpenGL44)) {
+            caps.add(Caps.BufferStorage);
+        }
+        
+        if (hasExtension("GL_ARB_sync") || caps.contains(Caps.OpenGL32)) {
+            caps.add(Caps.SyncObjects);
+        }
+        
+        if (hasExtension("GL_ARB_multi_draw_indirect") || caps.contains(Caps.OpenGL43)) {
+            caps.add(Caps.MultiDrawIndirect);
+        }
+        
+        if (hasExtension("GL_ARB_map_buffer_range") || caps.contains(Caps.OpenGL30)) {
+            caps.add(Caps.MapBuffer);
+        }
+        
+        if (hasExtension("GL_ARB_query_buffer_object") || hasExtension("GL_AMD_query_buffer_object") || caps.contains(Caps.OpenGL44)) {
+            caps.add(Caps.QueryBuffer);
+        }
+         
+        if (hasExtension("GL_ARB_shader_image_load_store") || caps.contains(Caps.OpenGL42)) {
+            caps.add(Caps.ImageLoadStore);
             limits.put(Limits.ImageUnits, getInteger(GL4.GL_MAX_IMAGE_UNITS));
         }  
         
@@ -661,7 +692,8 @@ public final class GLRenderer implements Renderer {
     @SuppressWarnings("fallthrough")
     @Override
     public void initialize() { 
-        loadCapabilities();
+        loadCapabilities(); 
+        
         int maxVertAttribs = limits.get(Limits.VertexAttributes);
         int maxFragTextures = limits.get(Limits.FragmentTextureUnits);
         int maxVertTextures = limits.get(Limits.VertexTextureUnits);
@@ -675,17 +707,17 @@ public final class GLRenderer implements Renderer {
         int maxTextures = Math.min(Math.min(maxFragTextures, maxVertTextures), maxCombTextures);
         int maxImages = Math.min(maxImageUnits, maxCompImages);
         
-        System.out.println("maxVertAttribs: "+maxVertAttribs);
-        System.out.println("maxFragTextures: "+maxFragTextures);
-        System.out.println("maxVertTextures: "+maxVertTextures);
-        System.out.println("maxCombTextures: "+maxCombTextures);
-        System.out.println("maxImageUnits: "+maxImageUnits);
-        System.out.println("maxCompImages: "+maxCompImages);
-        System.out.println("maxUboBinds: "+maxUboBinds);
-        System.out.println("maxSsboBinds: "+maxSsboBinds);
-        System.out.println("maxAcboBinds: "+maxAcboBinds);
-        System.out.println(" -> maxTextures: "+maxTextures);
-        System.out.println(" -> maxImages: "+maxImages);
+        //System.out.println("maxVertAttribs: "+maxVertAttribs);
+        //System.out.println("maxFragTextures: "+maxFragTextures);
+        //System.out.println("maxVertTextures: "+maxVertTextures);
+        //System.out.println("maxCombTextures: "+maxCombTextures);
+        //System.out.println("maxImageUnits: "+maxImageUnits);
+        //System.out.println("maxCompImages: "+maxCompImages);
+        //System.out.println("maxUboBinds: "+maxUboBinds);
+        //System.out.println("maxSsboBinds: "+maxSsboBinds);
+        //System.out.println("maxAcboBinds: "+maxAcboBinds);
+        //System.out.println(" -> maxTextures: "+maxTextures);
+        //System.out.println(" -> maxImages: "+maxImages);
         
         context = new RenderContext(maxTextures, maxImages, maxUboBinds, maxSsboBinds, maxAcboBinds); 
         if (gl2 != null && !(gl instanceof GLES_30)) {
@@ -1371,20 +1403,61 @@ public final class GLRenderer implements Renderer {
         assert shader.getId() > 0;
 
         final BufferObject bufferObject = bufferBlock.getBufferObject();
-        if (bufferObject.getUniqueId() == -1 || bufferObject.isUpdateNeeded()) {
-            updateBufferData(bufferObject);
+        final TypedBuffer typedBuffer = bufferBlock.getTypedBuffer();
+        
+        if (bufferObject != null) {
+            //BufferObject
+            if (bufferObject.isUpdateNeeded()) {
+                updateBufferData(bufferObject);
+            }
+
+            if (!bufferBlock.isUpdateNeeded()) {
+                return;
+            }
+
+            bindProgram(shader);
+
+            final int shaderId = shader.getId();
+            final BufferObject.BufferType bufferType = bufferObject.getBufferType();
+
+            bindBuffer(bufferBlock, bufferObject, shaderId, bufferType);
+        } else {
+            //TypedBuffer
+            int shaderId = shader.getId();
+            setBuffer(bufferBlock.getName(), typedBuffer);
+            boolean isSSBOorUBO = typedBuffer.getType() == TypedBuffer.Type.UniformBuffer || typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer;
+        
+            int index = bufferBlock.getIndex();
+            bindProgram(shader); 
+            
+            if (isSSBOorUBO) {
+                if (index == ShaderVariable.LOC_NOT_DEFINED) { 
+                    bufferBlock.clearUpdateNeeded();
+                    return;
+                } else if (index == ShaderVariable.LOC_UNKNOWN) {
+                    if (typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer) {
+                        index = gl4.glGetProgramResourceIndex(shaderId, GL4.GL_SHADER_STORAGE_BLOCK, bufferBlock.getName());
+                    } else {
+                        index = gl3.glGetUniformBlockIndex(shaderId, bufferBlock.getName());
+                    } 
+                    //System.out.println("checked block "+bufferBlock.getName()+" for index: "+index);
+                    bufferBlock.setIndex(index);
+                    if (index == ShaderVariable.LOC_NOT_DEFINED) { 
+                        bufferBlock.clearUpdateNeeded();
+                        return;
+                    }
+                }
+            }
+            int unit = setBuffer(bufferBlock.getName(), typedBuffer);
+            if (unit != bufferBlock.getBoundUnit()) {
+                if (typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer) {
+                    gl4.glShaderStorageBlockBinding(shaderId, index, unit);
+                } else if (typedBuffer.getType() == TypedBuffer.Type.UniformBuffer) {
+                    gl3.glUniformBlockBinding(shaderId, index, unit);
+                } 
+                bufferBlock.setBoundUnit(unit);
+            }
         }
-
-        if (!bufferBlock.isUpdateNeeded()) {
-            return;
-        }
-
-        bindProgram(shader);
-
-        final int shaderId = shader.getId();
-        final BufferObject.BufferType bufferType = bufferObject.getBufferType();
-
-        bindBuffer(bufferBlock, bufferObject, shaderId, bufferType);
 
         bufferBlock.clearUpdateNeeded();
     }
@@ -3166,21 +3239,46 @@ public final class GLRenderer implements Renderer {
     public void setVertexAttrib(VertexBuffer vb) {
         setVertexAttrib(vb, null);
     }
-
+    
     public void drawTriangleArray(Mesh.Mode mode, int count, int vertCount) {
-        boolean useInstancing = count > 1 && caps.contains(Caps.MeshInstancing);
-        if (useInstancing) {
-            glext.glDrawArraysInstancedARB(convertElementMode(mode), 0,
-                    vertCount, count);
-        } else {
-            gl.glDrawArrays(convertElementMode(mode), 0, vertCount);
-        }
+        drawTriangleArray(null, 0L, 0, 0, mode, count, vertCount);
     }
 
+    public void drawTriangleArray(DrawIndirectBuffer indirect, long offset, int stride, int indirectCount, Mesh.Mode mode, int count, int vertCount) {
+        if (indirect != null) {
+            if (indirect.getDrawMode() != DrawIndirectBuffer.DrawIndirectMode.Draw) {
+                throw new RendererException("only DrawIndirectBuffers in DrawIndirectMode.Draw are allowed");
+            }
+            if (!caps.contains(Caps.MultiDrawIndirect)) {
+                throw new RendererException("Hardware does not support MultiDrawIndirect");
+            }
+            setBuffer(null, indirect);  
+            gl4.glMultiDrawArraysIndirect(convertElementMode(mode), offset, indirectCount, stride);
+        } else {
+            boolean useInstancing = count > 1 && caps.contains(Caps.MeshInstancing);
+            if (useInstancing) {
+                glext.glDrawArraysInstancedARB(convertElementMode(mode), 0,
+                        vertCount, count);
+            } else {
+                gl.glDrawArrays(convertElementMode(mode), 0, vertCount);
+            }
+        }
+    }
+    
     public void drawTriangleList(VertexBuffer indexBuf, Mesh mesh, int count) {
+        drawTriangleList(null, 0L, 0, 0, indexBuf, mesh, count);
+    }
+
+    public void drawTriangleList(DrawIndirectBuffer indirect, long offset, int stride, int indirectCount, VertexBuffer indexBuf, Mesh mesh, int count) {
         if (indexBuf.getBufferType() != VertexBuffer.Type.Index) {
             throw new IllegalArgumentException("Only index buffers are allowed as triangle lists.");
         } 
+        
+        if (indirect != null && indirect.getDrawMode() != DrawIndirectBuffer.DrawIndirectMode.DrawIndices) {
+            throw new IllegalArgumentException("only DrawIndirectBuffers in DrawIndirectMode.DrawIndices are allowed");
+        } else if (indirect != null && !caps.contains(Caps.MultiDrawIndirect)) {
+            throw new RendererException("Hardware does not support MultiDrawIndirect");
+        }
 
         switch (indexBuf.getFormat()) {
             case UnsignedByte:
@@ -3198,11 +3296,14 @@ public final class GLRenderer implements Renderer {
                 throw new RendererException("Unexpected format for index buffer: " + indexBuf.getFormat());
         }
 
-        if (indexBuf.isUpdateNeeded()) {
+        UntypedBuffer untypedBuffer = indexBuf.getUnderlyingBuffer();
+        if (indexBuf.isUpdateNeeded() && untypedBuffer == null) {
             updateBufferData(indexBuf);
+        } else if (untypedBuffer != null) {
+            updateBuffer(untypedBuffer);
         }
 
-        int bufId = indexBuf.getId();
+        int bufId = untypedBuffer != null ? untypedBuffer.getId() : indexBuf.getId();
         assert bufId != -1;
 
         if (caps.contains(Caps.VertexBufferArray)) {
@@ -3261,7 +3362,10 @@ public final class GLRenderer implements Renderer {
                 curOffset += elementLength * elSize;
             }
         } else {
-            if (useInstancing) {
+            if (indirect != null) {
+                setBuffer(null, indirect);  
+                gl4.glMultiDrawElementsIndirect(convertElementMode(mesh.getMode()), convertFormat(indexBuf.getFormat()), offset, indirectCount, stride);
+            } else if (useInstancing) {
                 glext.glDrawElementsInstancedARB(convertElementMode(mesh.getMode()),
                         indexBuf.getData().limit(),
                         convertFormat(indexBuf.getFormat()),
@@ -3347,7 +3451,9 @@ public final class GLRenderer implements Renderer {
             slotsRequired = vb.getNumComponents() / 4;
         }
         
-        if (vb.isUpdateNeeded() && interleaved == null) {
+        UntypedBuffer underlyingBuffer = vb.getUnderlyingBuffer();
+        
+        if (vb.isUpdateNeeded() && interleaved == null && underlyingBuffer == null) {
             //this is only correct from jme3's point of view:
             //we might have to update this buffer even if interleaved is not null,
             //because a mesh could have interleaved buffers and not interleaved
@@ -3357,7 +3463,9 @@ public final class GLRenderer implements Renderer {
             //still holding the data twice on the CPU (once for the single buffers and once in the big 
             //interleaved buffer), so this is fine for now - AKasigkeit
             updateBufferData(vb);
-        } 
+        } else if (underlyingBuffer != null && underlyingBuffer.isUpdateNeeded()) {
+            updateBuffer(underlyingBuffer);
+        }
         
         //make sure its location (and depending on slotsRequired maybe more) are enabled
         IDList idList = lastState.vertexAttribsIndices;
@@ -3370,7 +3478,7 @@ public final class GLRenderer implements Renderer {
         //same semi-correctness here as above, just because interleaved is not null,
         //doesnt mean we neccessarily want to point to that interleaved buffers data with
         //this vertexAttribPointer
-        int bufferId = interleaved != null ? interleaved.getId() : vb.getId();
+        int bufferId = interleaved != null ? interleaved.getId() : underlyingBuffer != null ? underlyingBuffer.getId() : vb.getId();
         
         //now compare lastState with presented state
         VertexAttributePointer attribState = lastState.vertexAttribs[loc];
@@ -3491,6 +3599,11 @@ public final class GLRenderer implements Renderer {
         count = Math.max(mesh.getInstanceCount(), count);
          
         updateVertexArray(mesh, instanceData);  
+
+        DrawIndirectBuffer indirect = mesh.getDrawIndirectBuffer();  
+        long indirectOffset = mesh.getDrawIndirectOffset();
+        int indirectCount = mesh.getDrawIndirectCount();
+        int indirectStride = mesh.getDrawIndirectStride();
  
         VertexBuffer indices;
         if (mesh.getNumLodLevels() > 0) {
@@ -3499,9 +3612,9 @@ public final class GLRenderer implements Renderer {
             indices = mesh.getBuffer(Type.Index);
         }
         if (indices != null) {
-            drawTriangleList(indices, mesh, count);
+            drawTriangleList(indirect, indirectOffset, indirectStride, indirectCount, indices, mesh, count);
         } else {
-            drawTriangleArray(mesh.getMode(), count, mesh.getVertexCount());
+            drawTriangleArray(indirect, indirectOffset, indirectStride, indirectCount, mesh.getMode(), count, mesh.getVertexCount());
         } 
     }
 
@@ -3668,7 +3781,7 @@ public final class GLRenderer implements Renderer {
         }
         ListMap<String, Uniform> uniMap = shader.getUniformMap();
         ListMap<String, MatParam> uniforms = computeShader.getUniforms();
-        ListMap<String, TexMatParam> textures = computeShader.getTextures();
+        ListMap<String, TexImgParam> textures = computeShader.getTextures();
         ListMap<String, MatParam> buffers = computeShader.getBuffers();
 
         //System.out.println("clearing " + uniMap.size() + " uniforms currently tracked by the shader LETS HOPE ITS 0");
@@ -3697,7 +3810,7 @@ public final class GLRenderer implements Renderer {
         //now make sure all images are properly bound
         size = textures.size();
         for (int i = 0; i < size; i++) {
-            TexMatParam m = textures.getValue(i);
+            TexImgParam m = textures.getValue(i);
             Uniform u = shader.getUniform(m.getPrefixedName());
             if (u.getLocation() == Uniform.LOC_UNKNOWN) {
                 updateUniformLocation(shader, u);
@@ -3725,12 +3838,12 @@ public final class GLRenderer implements Renderer {
         size = buffers.size();
         for (int i = 0; i < size; i++) {
             MatParam m = buffers.getValue(i);
-            throw new UnsupportedOperationException("buffers need some rework and are not yet supported for ComputeShaders");
-            //TypedBuffer buffer = (TypedBuffer) m.getValue();
-            //ShaderBufferBlock block = shader.getBufferBlock(m.getPrefixedName());
-            //if (block.getBufferObject() != buffer) {
-            //    block.setBuffer(buffer); //TODO check if udpateNeeded = true is needed in setBufferObject, the blocks binding index should not change
-            //}
+            //throw new UnsupportedOperationException("buffers need some rework and are not yet supported for ComputeShaders");
+            TypedBuffer buffer = (TypedBuffer) m.getValue();
+            ShaderBufferBlock block = shader.getBufferBlock(m.getPrefixedName()); 
+            if (block.getTypedBuffer() != buffer) {
+                block.setTypedBuffer(buffer);  
+            }
         }
 
         //reset all values not set by current "material"
@@ -3751,6 +3864,14 @@ public final class GLRenderer implements Renderer {
         prepareShader(shader);
         setShader(shader.getShader());
         gl4.glDispatchCompute(x, y, z);
+    }
+    
+    @Override
+    public void runComputeShader(ComputeShader shader, DispatchIndirectBuffer buffer, int offset) {
+        prepareShader(shader);
+        setShader(shader.getShader());
+        setBuffer(null, buffer);
+        gl4.glDispatchComputeIndirect(offset);
     }
 
     @Override
@@ -3806,7 +3927,7 @@ public final class GLRenderer implements Renderer {
             gl.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, id);
             context.boundElementArrayVBO = id;
         }
-    }
+    } 
     
     private void bindBufferUnit(TypedBuffer.Type type, UntypedBuffer buffer, int unit) {
         int id = buffer.getId();
@@ -3860,14 +3981,14 @@ public final class GLRenderer implements Renderer {
     public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, int offset, int length, UntypedBuffer.MappingFlag... flags) {     
         if (buffer.getId() == -1) {
             throw new RendererException("cannot map buffer that has not yet been created");
-        } 
-        for (UntypedBuffer.MappingFlag flag : flags) {
-            System.out.println(" - "+flag);
-        } 
+        }  
         
         int flagBits = UntypedBuffer.MappingFlag.fromArray(flags);
         bindVertexArrayBuffer(buffer.getId());
         ByteBuffer mappedBuffer = gl3.glMapBufferRange(GL.GL_ARRAY_BUFFER, offset, length, flagBits, null);
+        if (mappedBuffer == null) {
+            throw new RendererException("failed to map buffer");
+        }
       
         UntypedBuffer.BufferMappingHandle handle = new UntypedBuffer.BufferMappingHandle(buffer, mappedBuffer, offset, length, flagBits);
         return handle;
@@ -3896,7 +4017,7 @@ public final class GLRenderer implements Renderer {
     @Override
     public void updateBuffer(UntypedBuffer buffer) { 
         
-        boolean isGpuOnly = buffer.getMode() == UntypedBuffer.MemoryMode.GpuOnly;
+        boolean isGpuOnly = buffer.getMemoryMode() == UntypedBuffer.MemoryMode.GpuOnly;
         boolean isStorage = buffer.getStorageAPI() == UntypedBuffer.StorageApi.Storage;
         
         int bufferId = buffer.getId(); 
@@ -3906,11 +4027,11 @@ public final class GLRenderer implements Renderer {
             gl.glGenBuffers(intBuf1);
              
             if (bufferId != -1) {
-                newBufferId = intBuf1.get(0);
+                newBufferId = intBuf1.get(0); 
             } else {
                 bufferId = intBuf1.get(0);
                 buffer.setId(bufferId); 
-                objManager.registerObject(buffer);
+                objManager.registerObject(buffer); 
             }
         } 
         
@@ -3933,7 +4054,7 @@ public final class GLRenderer implements Renderer {
         }
         
         //size changed (buffer must exist already)
-        if (buffer.hasPendingSizeChange()) {    
+        if (buffer.hasPendingSizeChange()) {     
             if (isStorage || isGpuOnly) { //if it was glBufferStorage fixed created or we do not have the data on the cpu, we need to copy content
                 //bind new buffer and init new buffer
                 bindVertexArrayBuffer(newBufferId); 
@@ -4055,9 +4176,6 @@ public final class GLRenderer implements Renderer {
         HashMap<String, BlockLayout> ssbLayouts = queryShaderStorageBlockLayout(shader.getId());
         shader.setBlockLayouts(ssbLayouts, ubLayouts);
     }
-    
-    private final ArrayList<BlockFieldLayout> tmpLayoutList = new ArrayList<>(32);
-    private final BlockFieldLayoutComparator fieldLayoutComparator = new BlockFieldLayoutComparator();
     
     private static class BlockFieldLayoutComparator implements Comparator<BlockFieldLayout> {
 
@@ -4227,5 +4345,141 @@ public final class GLRenderer implements Renderer {
             ssbLayouts.put(name, ubLayout);
         }
         return ssbLayouts;
+    }
+    
+    @Override
+    public void startQuery(GpuQuery query) {
+        int id = query.getId();
+        if (id == -1) {
+            intBuf1.position(0).limit(1);
+            gl.glGenQueries(1, intBuf1);
+            id = intBuf1.get(0);
+            
+            query.setId(id);
+            objManager.registerObject(query);
+        } else if (query.isRunning()) {
+            throw new IllegalArgumentException("provided query is already running");
+        }
+        
+        gl.glBeginQuery(query.getType().getGLValue(), id);
+        query.setStarted(this); 
+    }
+    
+    @Override
+    public void stopQuery(GpuQuery query) {
+        int id = query.getId();
+        if (id == -1 || !query.isRunning()) {
+            throw new IllegalArgumentException("provided query has is not running and thus cannot be stopped");
+        }
+        
+        gl.glEndQuery(query.getType().getGLValue());
+        query.setStopped();
+    }
+
+    @Override
+    public void deleteQuery(GpuQuery query) {  
+        int id = query.getId();
+        if (id != -1) {
+            if (query.isRunning()) {
+                stopQuery(query);
+            }
+
+            gl.glDeleteQuery(id);
+            query.resetObject();
+        }
+    }
+
+    @Override
+    public long getQueryResult(GpuQuery query) {
+        int id = query.getId();
+        if (id == -1) {
+            throw new IllegalArgumentException("the provided GpuQuery has not yet been started");
+        }
+        if (query.isRunning()) {
+            throw new IllegalArgumentException("the provided GpuQuery is still running");
+        }
+        return gl.glGetQueryObjectui64(id, GL.GL_QUERY_RESULT); 
+    }
+
+    @Override
+    public boolean isQueryResultAvailable(GpuQuery query) { 
+        int id = query.getId();
+        if (id == -1) {
+            throw new IllegalArgumentException("the provided GpuQuery has not yet been started");
+        }
+        if (query.isRunning()) {
+            throw new IllegalArgumentException("the provided GpuQuery is still running");
+        }
+        return gl.glGetQueryObjectiv(id, GL.GL_QUERY_RESULT_AVAILABLE) == 1; 
+    }
+    
+    @Override
+    public void getQueryResult(QueryBuffer store, GpuQuery query, int offset, boolean bits64, boolean wait) {
+        getQueryResult(store, query, offset, bits64, wait ? GL.GL_QUERY_RESULT : GL4.GL_QUERY_RESULT_NO_WAIT);
+    }
+    
+    @Override
+    public void getQueryResultAvailability(QueryBuffer store, GpuQuery query, int offset) {
+        getQueryResult(store, query, offset, false, GL.GL_QUERY_RESULT_AVAILABLE);
+    }
+    
+    private void getQueryResult(QueryBuffer store, GpuQuery query, int offset, boolean bits64, int pname) { 
+        if (query.getId() == -1) {
+            throw new RendererException("query has not yet been started");
+        }
+        if (query.isRunning()) {
+            throw new RendererException("Cannot get result of query that is still running");
+        }
+        if (!caps.contains(Caps.QueryBuffer)) {
+            throw new RendererException("Hardware does not support QueryBuffers");
+        }
+        setBuffer(null, store);
+        int bufId = store.getUntypedBuffer().getId();
+        if (context.boundQboUnit != bufId) {
+            gl.glBindBuffer(GL4.GL_QUERY_BUFFER, bufId);
+            context.boundQboUnit = bufId;
+        }
+        if (bits64) {
+            longBuf1.put(0, offset);
+            gl.glGetQueryObjectui64v(query.getId(), pname, longBuf1);
+        } else {
+            intBuf1.put(0, offset);  
+            gl.glGetQueryObjectuiv(query.getId(), pname, intBuf1);
+        }
+    }
+
+    @Override
+    public void placeSyncObject(SyncObject sync) { 
+        if (sync.isPlaced()) {
+            throw new RendererException("provided SyncObject is currently placed already");
+        }
+        if (!caps.contains(Caps.SyncObjects)) {
+            throw new RendererException("Hardware doesn't support SyncObjects");
+        }
+        Object ref = gl3.glFenceSync(GL3.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        sync.setPlaced(true);
+        sync.setSyncRef(ref);
+        if (sync.getId() == -1) {
+            sync.setId(1);
+        }
+        objManager.registerObject(sync);
+    }
+
+    @Override
+    public SyncObject.Signal checkSyncObject(SyncObject sync) { 
+        if (!sync.isPlaced()) {
+            throw new RendererException("provided SyncObject has not yet been placed");
+        }
+        int res = gl3.glClientWaitSync(sync.getSyncRef(), GL3.GL_SYNC_FLUSH_COMMANDS_BIT, 1L);
+        return SyncObject.Signal.fromGlConstant(res);
+    }
+
+    @Override
+    public void recycleSyncObject(SyncObject sync) { 
+        if (sync.isPlaced()) {
+            gl3.glDeleteSync(sync.getSyncRef());
+            sync.setSyncRef(null);
+            sync.setPlaced(false);
+        } 
     }
 }

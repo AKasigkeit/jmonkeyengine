@@ -8,6 +8,8 @@ package com.jme3.buffer;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.opengl.GL3;
 import com.jme3.renderer.opengl.GL4;
+import com.jme3.util.BufferUtils;
+import java.nio.ByteBuffer;
 
 /**
  *
@@ -76,11 +78,35 @@ public class TypedBuffer {
         }
     }
     
+    protected final Type TYPE;
+    protected final UntypedBuffer BUFFER;
+    private ByteBuffer dataBuffer = null;
+    
+    protected TypedBuffer(UntypedBuffer buffer, Type type) {
+        TYPE = type;
+        BUFFER = buffer;
+    }
+    
     public Type getType() {
-        return null;
+        return TYPE;
     }
     
     public UntypedBuffer getUntypedBuffer() {
-        return null;
+        return BUFFER;
+    }
+    
+    //used by subclasses to write data into buffers via convenience methods in case underlying untyped buffer is gpu only
+    protected ByteBuffer getByteBuffer(int size) {
+        //TODO rather make it static and threadlocal for direct rendering
+        if (dataBuffer != null && dataBuffer.capacity() < size) {
+            BufferUtils.destroyDirectBuffer(dataBuffer);
+            dataBuffer = null;
+        }
+        if (dataBuffer == null) {
+            dataBuffer = BufferUtils.createByteBuffer(size);
+            return dataBuffer;
+        }
+        dataBuffer.clear();
+        return dataBuffer;
     }
 }
