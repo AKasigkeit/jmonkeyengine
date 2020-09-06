@@ -1,0 +1,17 @@
+MaterialDef CameraUniformBuffer {
+
+    MaterialParameters {
+        Texture2D ColorMap
+    }
+
+    Technique {
+        VertexShader   GLSL330: jme3test/ubo/CameraUniformBuffer.vert
+        FragmentShader GLSL330: jme3test/ubo/CameraUniformBuffer.frag
+
+        WorldParameters {
+            WorldMatrix;
+            CameraBuffer;
+        }
+    }
+
+}
