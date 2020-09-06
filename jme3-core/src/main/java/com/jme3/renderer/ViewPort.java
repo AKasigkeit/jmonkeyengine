@@ -36,6 +36,7 @@ import com.jme3.post.SceneProcessor;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.manager.SceneRenderer;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.util.SafeArrayList;
 
@@ -74,6 +75,8 @@ public class ViewPort {
     protected final ColorRGBA backColor = new ColorRGBA(0,0,0,0);
     protected boolean clearDepth = false, clearColor = false, clearStencil = false;
     private boolean enabled = true;
+    
+    private SceneRenderer sceneRenderer = null;
 
     /**
      * Create a new viewport. User code should generally use these methods instead:<br>
@@ -101,6 +104,25 @@ public class ViewPort {
      */
     public String getName() {
         return name;
+    }
+    
+    /**
+     * Sets a custom SceneRenderer on this ViewPort.
+     * 
+     * @param sm the sceneRenderer to use 
+     */
+    public void setSceneRenderer(SceneRenderer sm) {
+        sceneRenderer = sm;
+    }
+    
+    /**
+     * Returns the specific SceneRenderer of this ViewPort, or null for default
+     * rendering
+     * 
+     * @return specific SceneRenderer if set, or null otherwise
+     */
+    public SceneRenderer getSceneRenderer() {
+        return sceneRenderer;
     }
 
     /**

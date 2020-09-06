@@ -48,6 +48,7 @@ import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.renderer.queue.RenderQueue.Bucket;
 import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.*;
+import com.jme3.scene.manager.SceneRenderer;
 import com.jme3.shader.Shader;
 import com.jme3.shader.UniformBinding;
 import com.jme3.shader.UniformBindingManager;
@@ -1092,8 +1093,15 @@ public class RenderManager {
 
         if (prof!=null) prof.vpStep(VpStep.RenderScene, vp, null);
         List<Spatial> scenes = vp.getScenes();
-        for (int i = scenes.size() - 1; i >= 0; i--) {            
-            renderScene(scenes.get(i), vp);
+        SceneRenderer sceneRenderer = vp.getSceneRenderer();
+        if (sceneRenderer != null) {
+            for (int i = scenes.size() - 1; i >= 0; i--) {  
+                sceneRenderer.renderScene(vp, scenes.get(i), vp.getQueue());
+            }
+        } else {
+            for (int i = scenes.size() - 1; i >= 0; i--) {            
+                renderScene(scenes.get(i), vp);
+            }
         }
 
         if (processors != null) {
