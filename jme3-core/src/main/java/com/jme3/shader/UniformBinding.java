@@ -202,7 +202,14 @@ public enum UniformBinding {
      * Converts normals from model space to world space.
      * Type: mat3
      */
-    WorldNormalMatrix("mat3");
+    WorldNormalMatrix("mat3"),
+    
+    /**
+     * A UniformBuffer containing all data related to the Camera, for example ViewMatrix,
+     * ViewProjectionMatrix, their inverses etc. However does not contain model related
+     * data like WorldMatrix or WorldViewProjectionMatrix.
+     */
+    CameraBuffer("UBO");
     
     String glslType;
 

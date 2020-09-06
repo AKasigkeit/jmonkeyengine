@@ -38,6 +38,8 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.system.Timer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * <code>UniformBindingManager</code> helps {@link RenderManager} to manage
@@ -80,6 +82,10 @@ public class UniformBindingManager {
     private Vector2f resolution = new Vector2f();
     private Vector2f resolutionInv = new Vector2f();
     private Vector2f nearFar = new Vector2f();
+    
+    private int currentFrame = 0; 
+    private Map<Camera, CameraUniformBuffer> cameraBuffers = new HashMap<>();
+    private CameraUniformBuffer currentCameraBuffer = null; 
 
     /**
      * Internal use only.
@@ -217,6 +223,12 @@ public class UniformBindingManager {
                     break;
             }
         }
+        if (shader.isCameraUniformBufferNeeded()) {
+            ShaderBufferBlock block = shader.getBufferBlock("g_Camera");
+            if (block.getTypedBuffer() != currentCameraBuffer.getBuffer()) {
+                block.setTypedBuffer(currentCameraBuffer.getBuffer());
+            }
+        }
     }
 
     /**
@@ -252,6 +264,19 @@ public class UniformBindingManager {
 
         near = cam.getFrustumNear();
         far = cam.getFrustumFar();
+        
+        //update CameraUniformBuffer
+        CameraUniformBuffer buffer = cameraBuffers.get(cam);
+        if (buffer == null) { 
+            buffer = new CameraUniformBuffer(cam);
+            cameraBuffers.put(cam, buffer);
+        }
+        if (buffer.needsUpdate(currentFrame)) { //if the camera changes during rendering and then gets reused, this wont work
+            buffer.setTimer(timer);
+            buffer.updateState(viewMatrix,  projMatrix,  viewProjMatrix);
+            buffer.setLastUpdate(currentFrame);
+        }
+        currentCameraBuffer = buffer;
     }
 
     public void setViewPort(int viewX, int viewY, int viewWidth, int viewHeight) {
@@ -270,5 +295,6 @@ public class UniformBindingManager {
         // time for this frame to avoid inter-frame drift.
         time = timer.getTimeInSeconds();
         tpf = timer.getTimePerFrame();
-    }
+        currentFrame++;
+    } 
 }

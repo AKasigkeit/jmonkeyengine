@@ -1,0 +1,34 @@
+//**********************************//
+// Camera Uniform Buffer Definition //
+//**********************************//
+layout (shared) uniform g_Camera {  
+    mat4    cam_viewMatrix;
+    mat4    cam_projectionMatrix;
+    mat4    cam_viewProjectionMatrix;
+    mat4    cam_viewMatrixInverse;
+    mat4    cam_projectionMatrixInverse;
+    mat4    cam_viewProjectionMatrixInverse;
+    
+    vec4    cam_rotation;
+    
+    vec3    cam_position;
+    float   cam_height;
+    vec3    cam_direction;
+    float   cam_width;
+    vec3    cam_left;
+    float   cam_frustumTop;
+    vec3    cam_up;
+    float   cam_frustumBottom;
+    
+    float   cam_frustumLeft;
+    float   cam_frustumRight;
+    float   cam_frustumNear;
+    float   cam_frustumFar;
+    float   cam_viewPortLeft;
+    float   cam_viewPortRight;
+    float   cam_viewPortTop;
+    float   cam_viewPortBottom; 
+    
+    float   cam_time;
+    float   cam_tpf;  
+};

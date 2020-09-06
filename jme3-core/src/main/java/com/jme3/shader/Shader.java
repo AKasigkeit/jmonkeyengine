@@ -87,6 +87,11 @@ public final class Shader extends NativeObject {
      * Maps attribute name to the location of the attribute in the shader.
      */
     private final IntMap<Attribute> attribs;
+    
+    /**
+     * Will be set to true if the UniformBinding.CameraBuffer is set in the WorldParameters
+     */
+    private boolean needsCameraUniformBuffer = false;
 
     /**
      * Type of shader. The shader will control the pipeline of its type.
@@ -394,15 +399,30 @@ public final class Shader extends NativeObject {
     }
 
     public void addUniformBinding(UniformBinding binding){
-        String uniformName = "g_" + binding.name();
-        Uniform uniform = uniforms.get(uniformName);
-        if (uniform == null) {
-            uniform = new Uniform();
-            uniform.name = uniformName;
-            uniform.binding = binding;
-            uniforms.put(uniformName, uniform);
-            boundUniforms.add(uniform);
+        if (binding == UniformBinding.CameraBuffer) {
+            String bufferName = "g_Camera";
+            ShaderBufferBlock block = bufferBlocks.get(bufferName);
+            if (block == null) {
+                block = new ShaderBufferBlock();
+                block.name = bufferName;
+                bufferBlocks.put(bufferName, block);
+            }
+            needsCameraUniformBuffer = true;
+        } else {
+            String uniformName = "g_" + binding.name();
+            Uniform uniform = uniforms.get(uniformName);
+            if (uniform == null) {
+                uniform = new Uniform();
+                uniform.name = uniformName;
+                uniform.binding = binding;
+                uniforms.put(uniformName, uniform);
+                boundUniforms.add(uniform);
+            }
         }
+    }
+    
+    public boolean isCameraUniformBufferNeeded() {
+        return needsCameraUniformBuffer;
     }
     
     public Uniform getUniform(String name){
@@ -424,7 +444,7 @@ public final class Shader extends NativeObject {
      */
     public ShaderBufferBlock getBufferBlock(final String name) {
 
-        assert name.startsWith("m_");
+        assert name.startsWith("m_") || name.equals("g_Camera");
 
         ShaderBufferBlock block = bufferBlocks.get(name);
 
