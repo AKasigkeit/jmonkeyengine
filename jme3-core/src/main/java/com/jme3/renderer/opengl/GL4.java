@@ -278,4 +278,26 @@ public interface GL4 extends GL3 {
      * @param stride the stride of between the start of one command and the next. or 0 for tightly packed
      */
     public void glMultiDrawElementsIndirect(int mode, int type, long offset, int drawCount, int stride);
+    
+    /**
+     * VERY IMPORTANT: if no buffer is bound to GL_QUERY_BUFFER, this will crash the application. 
+     * Stores the value of pname of the provided query at the provided offset
+     * in the buffer currently bound to GL_QUERY_BUFFER.
+     *  
+     * @param id id of the query
+     * @param pname what to query
+     * @param offset offset into buffer
+     */
+    public void glGetQueryObjectuiv(int id, int pname, int offset);
+    
+    /**
+     * VERY IMPORTANT: if no buffer is bound to GL_QUERY_BUFFER, this will crash the application. 
+     * Stores the value of pname of the provided query at the provided offset
+     * in the buffer currently bound to GL_QUERY_BUFFER, stores 64 bits of data.
+     *  
+     * @param id id of the query
+     * @param pname what to query
+     * @param offset offset into buffer
+     */
+    public void glGetQueryObjectui64v(int id, int pname, int offset);
 }

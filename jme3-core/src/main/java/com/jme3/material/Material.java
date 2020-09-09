@@ -34,6 +34,9 @@ package com.jme3.material;
 import com.jme3.asset.AssetKey;
 import com.jme3.asset.AssetManager;
 import com.jme3.asset.CloneableSmartAsset;
+import com.jme3.buffer.QueryBuffer;
+import com.jme3.buffer.ShaderStorageBuffer;
+import com.jme3.buffer.TypedBuffer;
 import com.jme3.export.*;
 import com.jme3.light.LightList;
 import com.jme3.material.RenderState.BlendMode;
@@ -692,6 +695,10 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
     public void setShaderStorageBufferObject(final String name, final BufferObject value) {
         value.setBufferType(BufferObject.BufferType.ShaderStorageBufferObject);
         setParam(name, VarType.BufferObject, value);
+    } 
+    
+    public void setShaderStorageBuffer(final String name, final ShaderStorageBuffer value) {
+        setParam(name, VarType.BufferObject, value);
     }
 
     /**
@@ -833,7 +840,11 @@ public class Material implements CloneableSmartAsset, Cloneable, Savable {
             if (isBO(type)) {
 
                 final ShaderBufferBlock bufferBlock = shader.getBufferBlock(param.getPrefixedName());
-                bufferBlock.setBufferObject((BufferObject) param.getValue());
+                if (param.getValue() instanceof BufferObject) {
+                    bufferBlock.setBufferObject((BufferObject) param.getValue());
+                } else {
+                    bufferBlock.setTypedBuffer((TypedBuffer) param.getValue());
+                }
 
             } else {
 

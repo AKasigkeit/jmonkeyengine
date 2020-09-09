@@ -5,6 +5,7 @@
  */
 package com.jme3.buffer;
 
+import com.jme3.buffer.UntypedBuffer.StorageFlag;
 import com.jme3.shader.VarType;
 import com.jme3.shader.layout.BlockFieldLayout;
 import com.jme3.shader.layout.BufferWriterUtils;
@@ -15,6 +16,7 @@ import com.jme3.util.BufferUtils;
 import com.jme3.util.SafeArrayList;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Collection;
 import java.util.List;
 
@@ -77,7 +79,7 @@ public class ShaderStorageBuffer extends FieldBuffer {
         ByteBuffer data;
         if (isCpuGpu) {
             if (layout.getSize() > BUFFER.getSizeOnCpu()) {
-                data = ByteBuffer.allocate(layout.getSize()); //will be destroyed further down again
+                data = ByteBuffer.allocate(layout.getSize()).order(ByteOrder.nativeOrder()); //will be destroyed further down again 
                 isTempBuffer = true;
             } else {
                 data = BUFFER.getCpuData();
@@ -99,15 +101,14 @@ public class ShaderStorageBuffer extends FieldBuffer {
                 if (field.getVarType() != null && fieldLayout == null) {
                     throw new IllegalArgumentException("field: " + field.getName() + " is not declared in the GLSL layout of the buffer");
                 }
-
                 if (fieldLayout != null) {
                     //it is a raw field in the buffer, not part of a struct 
-                    bytesWritten += BufferWriterUtils.writeField(data,
+                    bytesWrittenTotal += BufferWriterUtils.writeField(data,
                             fieldLayout.getIndex(), fieldLayout.getArraySize(), fieldLayout.getArrayStride(),
                             fieldLayout.getMatrixStride(), field.getVarType(), field.getValue());
                 } else {
                     //it is a struct, go fancy
-                    System.out.println("check for array: " + field.getValue() + ": " + isObjectArray(field.getValue()));
+                    //System.out.println("check for array: " + field.getValue() + ": " + isObjectArray(field.getValue()));
                     if (isObjectArray(field.getValue())) {
                         Class<?> structClass;
                         if (field.getValue().getClass().isArray()) {
@@ -115,9 +116,9 @@ public class ShaderStorageBuffer extends FieldBuffer {
                         } else {
                             structClass = ((List<?>) field.getValue()).get(0).getClass();
                         }
-                        bytesWritten += flushStructArray(data, fieldName, structClass, field.getValue(), -1);
+                        bytesWrittenTotal += flushStructArray(data, fieldName, structClass, field.getValue(), -1);
                     } else {
-                        bytesWritten += flushStruct(data, fieldName, field.getValue().getClass(), field.getValue(), -1);
+                        bytesWrittenTotal += flushStruct(data, fieldName, field.getValue().getClass(), field.getValue(), -1);
 
                     }
                 }

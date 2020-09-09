@@ -191,7 +191,9 @@ public class UntypedBuffer extends NativeObject {
         /**
          * Use this to make sure subsequent calls will see values written to the
          * buffer if the buffer is mapped. If this flags is used, Persistent
-         * flag MUST also be used.
+         * flag MUST also be used. If this flag is not used,
+         * renderer.memoryBarrier() must be called with the
+         * MemoryBarrierBit.CLIENT_MAPPED_BUFFER bit set
          */
         Coherent(GL4.GL_MAP_READ_BIT),
         /**
@@ -345,7 +347,7 @@ public class UntypedBuffer extends NativeObject {
         MEM_MODE = mode;
         RENDERER = renderer;
         BUFFERDATA_USAGE = bdUsage == null ? -1 : bdUsage.getGlConstant();
-        STORAGE_FLAGS = StorageFlag.fromArray(stFlags); 
+        STORAGE_FLAGS = StorageFlag.fromArray(stFlags);
     }
 
     //constructor for destructable copy
@@ -481,9 +483,10 @@ public class UntypedBuffer extends NativeObject {
             throw new UnsupportedOperationException("cannot update data when this buffer has not yet been initialized");
         }
 
+        System.out.println("updateData: " + data.remaining() + " bytes at " + offset);
         updateOffset = offset;
         updatePosition = data.position();
-        updateSize = data.limit() - data.position();
+        updateSize = data.remaining();
         if (MEM_MODE == MemoryMode.GpuOnly) {
             int neededSize = offset + updateSize;
             if (neededSize > gpuSize) {
@@ -495,8 +498,8 @@ public class UntypedBuffer extends NativeObject {
             }
             updateBuffer = data; //since theres no cpu data buffer, remember this one (if in lazy mode, it will be overridden)
         } else {
-            if (offset + updateSize > cpuData.capacity()) { //grow
-                ByteBuffer newBuffer = BufferUtils.createByteBuffer(Math.max(offset + updateSize, data.capacity()));
+            if (offset + updateSize > cpuData.capacity()) { //grow 
+                ByteBuffer newBuffer = BufferUtils.createByteBuffer(Math.max(offset + updateSize, data.capacity())); 
                 for (int i = 0; i < Math.min(offset, cpuData.capacity()); i++) {
                     newBuffer.put(i, cpuData.get(i));
                 }
@@ -514,8 +517,12 @@ public class UntypedBuffer extends NativeObject {
             }
         }
 
+        //if its direct, initialization already created it thus this is an actual update
+        //however in lazy mode, just because initialize() was called, doesnt mean the buffer was created 
         if (isDirect()) {
             RENDERER.updateBuffer(this);
+        } else if (id == -1) {
+            clearPendingUpdate();
         }
     }
 
@@ -845,7 +852,7 @@ public class UntypedBuffer extends NativeObject {
             this.offset = offset;
             this.length = length;
             this.buffer = directBuffer;
-            this.flags = mappingFlags; 
+            this.flags = mappingFlags;
         }
 
         /**

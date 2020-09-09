@@ -318,6 +318,23 @@ public class RenderQueue {
                 throw new UnsupportedOperationException("Unsupported bucket type: " + bucket);
         }
     }
+    
+    public GeometryList getList(Bucket bucket) {
+        switch (bucket) {
+            case Gui:
+                return guiList;
+            case Opaque:
+                return opaqueList;
+            case Sky:
+                return skyList;
+            case Transparent:
+                return transparentList;
+            case Translucent:
+                return translucentList; 
+            default:
+                throw new UnsupportedOperationException("Unsupported bucket type: " + bucket);
+        }
+    }
 
     public void clear() {
         opaqueList.clear();

@@ -761,7 +761,7 @@ public class LwjglGL extends LwjglRender implements GL, GL2, GL3, GL4 {
     }
 
     @Override
-    public void glGetQueryObjectuiv(int id, int pname, IntBuffer params) {
+    public void glGetQueryObjectuiv(int id, int pname, IntBuffer params) {  
         GL15.glGetQueryObjectuiv(id, pname, params);
     }
 
@@ -778,5 +778,15 @@ public class LwjglGL extends LwjglRender implements GL, GL2, GL3, GL4 {
     @Override
     public void glMultiDrawElementsIndirect(int mode, int type, long offset, int count, int stride) {
         GL43.glMultiDrawElementsIndirect(mode, type, offset, count, stride);
+    }
+
+    @Override
+    public void glGetQueryObjectuiv(int id, int pname, int offset) {  
+        GL15C.nglGetQueryObjectuiv(id, pname, offset);
+    }
+
+    @Override
+    public void glGetQueryObjectui64v(int id, int pname, int offset) {  
+        GL33C.nglGetQueryObjectui64v(id, pname, offset);
     }
 }

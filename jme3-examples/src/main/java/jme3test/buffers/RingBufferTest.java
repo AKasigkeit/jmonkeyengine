@@ -6,8 +6,9 @@
 package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
-import com.jme3.buffer.RingBuffer;
-import com.jme3.buffer.RingBuffer.RingBufferBlock;
+import com.jme3.buffer.pmb.RingBuffer;
+import com.jme3.buffer.pmb.RingBuffer.RingBufferBlock;
+import com.jme3.buffer.pmb.SingleBufferRingBuffer;
 import com.jme3.material.Material;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
@@ -25,24 +26,19 @@ import java.nio.IntBuffer;
  * @author Alexander Kasigkeit
  */
 public class RingBufferTest extends SimpleApplication {
-    
-    
+
     //  2_000    1   0.0004
     //  2_000    2   0.00025  =  x1.6
     //  2_000    3   0.00024  =  x1.6
-    
     // 16_000    1   0.0017   
     // 16_000    2   0.0013   =  x1.3
     // 16_000    3   0.0013   =  x1.3
-
     // 64_000    1   0.008    
     // 64_000    2   0.005    =  x1.6
     // 64_000    3   0.005    =  x1.6
-    
     // the 64_000 objects, 3 buffer blocks example is giving me a frame time of 0.005 seconds (= 200 FPS)
     // thos objects take 5_120_000 bytes (= 5.12 MB), which is 1 GB of data each second (200 fps * 5 mb data).
     //
-    
     private static final int NUM_BLOCKS = 2;
     private static final int NUM_OBJS = 64_000;
     private static final float SCREEN_RANGE = 50f;
@@ -52,7 +48,8 @@ public class RingBufferTest extends SimpleApplication {
         t.start();
     }
 
-    private RingBuffer ringBuffer;  
+    private RingBuffer ringBuffer;
+    private RingBufferBlock currentBlock = null;
     private float[] SEEDS = new float[NUM_OBJS];
     private float time = 0f;
 
@@ -67,8 +64,8 @@ public class RingBufferTest extends SimpleApplication {
         int bytesPerObject = numVerts * bytesPerVertex;
         int totalSize = NUM_OBJS * bytesPerObject;
         System.out.println("total bytes per block: " + totalSize);
-          
-        ringBuffer = new RingBuffer(renderer, totalSize, NUM_BLOCKS);
+
+        ringBuffer = new SingleBufferRingBuffer(renderer, totalSize, NUM_BLOCKS);
         VertexBuffer posBuffer = ringBuffer.getBuffer().asVertexBuffer(VertexBuffer.Type.Position, VertexBuffer.Format.Float, 3, bytesPerVertex, 0);
         VertexBuffer texBuffer = ringBuffer.getBuffer().asVertexBuffer(VertexBuffer.Type.TexCoord, VertexBuffer.Format.Float, 2, bytesPerVertex, 3 * 4);
         VertexBuffer indexBuffer = new VertexBuffer(VertexBuffer.Type.Index);
@@ -109,19 +106,21 @@ public class RingBufferTest extends SimpleApplication {
         //the only difference is, doing it this way would result in the sync object waiting for unneccessary commands to finish,
         //however in this example i dont render anything else, thus there are no draw calls after the ones making use
         //of the data and the sync object will sync basically the corrert GL calls
-        ringBuffer.release();
-        
+        if (currentBlock != null) {
+            currentBlock.finish();
+        }
+
         //grab next block and fill it with bunch of CPU calculated data
-        RingBufferBlock block = ringBuffer.next();
+        currentBlock = ringBuffer.next();
         for (int i = 0; i < SEEDS.length; i++) {
             float x = FastMath.sin(SEEDS[i] + time) + SEEDS[i];
             float y = FastMath.cos(SEEDS[i] + time) + SEEDS[i];
-            float z = SEEDS[i] / SCREEN_RANGE; 
+            float z = SEEDS[i] / SCREEN_RANGE;
             //              X            Y            Z            U            V
-            block.putFloat(x).putFloat(y).putFloat(z).putFloat(0f).putFloat(0f);
-            block.putFloat(x + 1f).putFloat(y).putFloat(z).putFloat(1f).putFloat(0f);
-            block.putFloat(x + 1f).putFloat(y + 1f).putFloat(z).putFloat(1f).putFloat(1f);
-            block.putFloat(x).putFloat(y + 1f).putFloat(z).putFloat(0f).putFloat(1f);  
+            currentBlock.putFloat(x).putFloat(y).putFloat(z).putFloat(0f).putFloat(0f)
+                    .putFloat(x + 1f).putFloat(y).putFloat(z).putFloat(1f).putFloat(0f)
+                    .putFloat(x + 1f).putFloat(y + 1f).putFloat(z).putFloat(1f).putFloat(1f)
+                    .putFloat(x).putFloat(y + 1f).putFloat(z).putFloat(0f).putFloat(1f);
         }
     }
 

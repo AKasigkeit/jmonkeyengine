@@ -721,8 +721,8 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     }
 
     @Override
-    public void glGetQueryObjectuiv(int id, int pname, IntBuffer params) {
-        GL15.glGetQueryObjectu(id, pname, params);
+    public void glGetQueryObjectuiv(int id, int pname, IntBuffer params) { 
+        GL15.glGetQueryObjectu(id, pname, params);   
     }
 
     @Override
@@ -738,5 +738,15 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     @Override
     public void glMultiDrawElementsIndirect(int mode, int type, long offset, int count, int stride) {
         GL43.glMultiDrawElementsIndirect(mode, type, offset, count, stride);
+    }
+
+    @Override
+    public void glGetQueryObjectuiv(int id, int pname, int offset) {  
+        throw new UnsupportedOperationException("cannot find a way to store query results in GL_QUERY_BUFFER");
+    }
+
+    @Override
+    public void glGetQueryObjectui64v(int id, int pname, int offset) {  
+        throw new UnsupportedOperationException("cannot find a way to store query results in GL_QUERY_BUFFER");
     }
 }

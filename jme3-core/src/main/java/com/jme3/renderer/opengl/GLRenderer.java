@@ -1397,7 +1397,7 @@ public final class GLRenderer implements Renderer {
      * @param shader the shader.
      * @param bufferBlock the storage block.
      */
-    protected void updateShaderBufferBlock(final Shader shader, final ShaderBufferBlock bufferBlock) {
+    protected void updateShaderBufferBlock(final Shader shader, final ShaderBufferBlock bufferBlock) { 
 
         assert bufferBlock.getName() != null;
         assert shader.getId() > 0;
@@ -1439,8 +1439,7 @@ public final class GLRenderer implements Renderer {
                         index = gl4.glGetProgramResourceIndex(shaderId, GL4.GL_SHADER_STORAGE_BLOCK, bufferBlock.getName());
                     } else {
                         index = gl3.glGetUniformBlockIndex(shaderId, bufferBlock.getName());
-                    } 
-                    //System.out.println("checked block "+bufferBlock.getName()+" for index: "+index);
+                    }  
                     bufferBlock.setIndex(index);
                     if (index == ShaderVariable.LOC_NOT_DEFINED) { 
                         bufferBlock.clearUpdateNeeded();
@@ -1448,7 +1447,7 @@ public final class GLRenderer implements Renderer {
                     }
                 }
             }
-            int unit = setBuffer(bufferBlock.getName(), typedBuffer);
+            int unit = setBuffer(bufferBlock.getName(), typedBuffer); 
             if (unit != bufferBlock.getBoundUnit()) {
                 if (typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer) {
                     gl4.glShaderStorageBlockBinding(shaderId, index, unit);
@@ -3463,7 +3462,7 @@ public final class GLRenderer implements Renderer {
             //still holding the data twice on the CPU (once for the single buffers and once in the big 
             //interleaved buffer), so this is fine for now - AKasigkeit
             updateBufferData(vb);
-        } else if (underlyingBuffer != null && underlyingBuffer.isUpdateNeeded()) {
+        } else if (underlyingBuffer != null) {
             updateBuffer(underlyingBuffer);
         }
         
@@ -3751,11 +3750,19 @@ public final class GLRenderer implements Renderer {
 
     @Override
     public long getProfilingTime(int taskId) {
+        if (context.boundQboUnit != 0) {
+            gl.glBindBuffer(gl4.GL_QUERY_BUFFER, 0);
+            context.boundQboUnit = 0;
+        }
         return gl.glGetQueryObjectui64(taskId, GL.GL_QUERY_RESULT);
     }
 
     @Override
     public boolean isTaskResultAvailable(int taskId) {
+        if (context.boundQboUnit != 0) {
+            gl.glBindBuffer(gl4.GL_QUERY_BUFFER, 0);
+            context.boundQboUnit = 0;
+        }
         return gl.glGetQueryObjectiv(taskId, GL.GL_QUERY_RESULT_AVAILABLE) == 1;
     }
 
@@ -4045,6 +4052,7 @@ public final class GLRenderer implements Renderer {
                     gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.getSizeOnGpu(), buffer.getBufferDataUsage());
                 }
             } else { 
+                System.out.println("creating buffer: "+buffer.getCpuData().remaining()); 
                 if (isStorage) {
                     gl4.glBufferStorage(GL.GL_ARRAY_BUFFER, buffer.getCpuData(), buffer.getStorageFlags());
                 } else {
@@ -4094,7 +4102,7 @@ public final class GLRenderer implements Renderer {
         
         //finally update
         if (buffer.hasPendingUpdate()) {
-            bindVertexArrayBuffer(bufferId);   
+            bindVertexArrayBuffer(bufferId);    
             gl.glBufferSubData(GL.GL_ARRAY_BUFFER, buffer.getPendingUpdateOffset(), buffer.getPendingUpdateBuffer());
             buffer.clearPendingUpdate();
         }
@@ -4398,6 +4406,11 @@ public final class GLRenderer implements Renderer {
         if (query.isRunning()) {
             throw new IllegalArgumentException("the provided GpuQuery is still running");
         }
+        if (context.boundQboUnit != 0) {
+            gl.glBindBuffer(gl4.GL_QUERY_BUFFER, 0);
+            context.boundQboUnit = 0;
+        }
+        
         return gl.glGetQueryObjectui64(id, GL.GL_QUERY_RESULT); 
     }
 
@@ -4409,6 +4422,10 @@ public final class GLRenderer implements Renderer {
         }
         if (query.isRunning()) {
             throw new IllegalArgumentException("the provided GpuQuery is still running");
+        }
+        if (context.boundQboUnit != 0) {
+            gl.glBindBuffer(gl4.GL_QUERY_BUFFER, 0);
+            context.boundQboUnit = 0;
         }
         return gl.glGetQueryObjectiv(id, GL.GL_QUERY_RESULT_AVAILABLE) == 1; 
     }
@@ -4433,18 +4450,19 @@ public final class GLRenderer implements Renderer {
         if (!caps.contains(Caps.QueryBuffer)) {
             throw new RendererException("Hardware does not support QueryBuffers");
         }
-        setBuffer(null, store);
-        int bufId = store.getUntypedBuffer().getId();
+        if (store.getUntypedBuffer().getId() == -1) {
+            updateBuffer(store.getUntypedBuffer());
+        }
+        //setBuffer(null, store);
+        int bufId = store.getUntypedBuffer().getId(); 
         if (context.boundQboUnit != bufId) {
-            gl.glBindBuffer(GL4.GL_QUERY_BUFFER, bufId);
+            gl.glBindBuffer(GL4.GL_QUERY_BUFFER, bufId); 
             context.boundQboUnit = bufId;
         }
-        if (bits64) {
-            longBuf1.put(0, offset);
-            gl.glGetQueryObjectui64v(query.getId(), pname, longBuf1);
-        } else {
-            intBuf1.put(0, offset);  
-            gl.glGetQueryObjectuiv(query.getId(), pname, intBuf1);
+        if (bits64) { 
+            gl4.glGetQueryObjectui64v(query.getId(), pname, offset);
+        } else { 
+            gl4.glGetQueryObjectuiv(query.getId(), pname, offset);  
         }
     }
 

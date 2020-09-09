@@ -1,0 +1,23 @@
+MaterialDef MultiDrawIndirect {
+
+    MaterialParameters {
+        Texture2D ColorMap 
+        BufferObject QueryResults
+        Int NumQueries
+        Int QueryIndex
+    }
+
+    Technique {
+        VertexShader   GLSL430: jme3test/qbo/QueryBuffer.vert
+        FragmentShader GLSL430: jme3test/qbo/QueryBuffer.frag
+
+        WorldParameters { 
+            WorldViewProjectionMatrix;
+        }
+
+        Defines {
+            NUM_QUERIES : NumQueries
+        }
+    }
+
+}

@@ -112,6 +112,7 @@ public abstract class FieldBuffer extends TypedBuffer {
         BlockField field = new BlockField(name, type);
         fields.add(field);
         fieldsMap.put(name, field);
+        fieldsChanged = true;
     }
 
     /**

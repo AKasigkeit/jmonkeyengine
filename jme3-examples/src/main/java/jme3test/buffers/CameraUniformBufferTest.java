@@ -17,12 +17,12 @@ import com.jme3.texture.Texture;
  *
  * @author Alexander Kasigkeit
  */
-public class TestCameraUniformBuffer extends SimpleApplication {
+public class CameraUniformBufferTest extends SimpleApplication {
 
     public static final int NUM_GEOS = 1024 * 16;
 
     public static void main(String[] args) {
-        TestCameraUniformBuffer t = new TestCameraUniformBuffer();
+        CameraUniformBufferTest t = new CameraUniformBufferTest();
         t.start();
     }
 

@@ -227,6 +227,11 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
         MorphTarget11,
         MorphTarget12,
         MorphTarget13,
+        
+        WorldMatrix,
+        Rotation,
+        Scale,
+        InstanceID,
     }
 
     /**
@@ -445,8 +450,8 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
         }
 
         if (bufType != Type.InstanceData) {
-            if (components < 1 || components > 4) {
-                throw new IllegalArgumentException("components must be between 1 and 4");
+            if (components < 1 || (components > 4 && components % 4 != 0)) {
+                throw new IllegalArgumentException("components must be between 1 and 4, or a multiple of 4");
             }
         }
         
@@ -456,6 +461,19 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
         this.componentsLength = components * format.getComponentSize();
         this.lastLimit = 0;//data.limit();
         clearUpdateNeeded(); //doesnt ever need update actually
+    }
+    
+    /**
+     * If this VertexBuffer has been created as a view on an UntypedBuffer, this 
+     * method can be used to switch the view onto another UntypedBuffer.
+     * 
+     * @param buffer the UntypedBuffer to switch view on
+     */
+    public void toViewOn(UntypedBuffer buffer) {
+        if (buffer == null || underlyingBuffer == null) {
+            throw new IllegalArgumentException("can only switch views when this VertexBuffer has been setup as view on an UntypedBuffer");
+        }
+        this.underlyingBuffer = buffer;
     }
 
     /**

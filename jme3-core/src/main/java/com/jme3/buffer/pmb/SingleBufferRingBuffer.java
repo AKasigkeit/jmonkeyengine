@@ -3,8 +3,9 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.jme3.buffer;
+package com.jme3.buffer.pmb;
 
+import com.jme3.buffer.UntypedBuffer;
 import com.jme3.buffer.UntypedBuffer.BufferMappingHandle;
 import com.jme3.buffer.UntypedBuffer.MappingFlag;
 import com.jme3.buffer.UntypedBuffer.MemoryMode;
@@ -13,14 +14,13 @@ import com.jme3.conditional.SyncObject;
 import com.jme3.conditional.SyncObject.Signal;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.Renderer;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
 /**
  *
  * @author Alexander Kasigkeit
  */
-public class RingBuffer {
+public class SingleBufferRingBuffer implements RingBuffer {
 
     private final int BYTES;
     private final int BLOCKS;
@@ -30,9 +30,10 @@ public class RingBuffer {
 
     private int currentBlock;
     private final SyncObject[] SYNC_OBJS;
-    private final RingBufferBlock[] RING_BLOCKS;
+    private final SingleBufferRingBufferBlock[] RING_BLOCKS;
+    private boolean unmapped = false;
 
-    public RingBuffer(Renderer renderer, int bytes, int blocks) {
+    public SingleBufferRingBuffer(Renderer renderer, int bytes, int blocks) {
         if (!renderer.getCaps().contains(Caps.BufferStorage) || !renderer.getCaps().contains(Caps.MapBuffer)) {
             throw new UnsupportedOperationException("Hardware does not support Persistently Mapped Buffers");
         }
@@ -45,31 +46,20 @@ public class RingBuffer {
         BUFFER.initialize(bytes * blocks);
         MAPPING = BUFFER.mapBuffer(MappingFlag.Write, MappingFlag.Persistent, MappingFlag.Coherent);
         SYNC_OBJS = new SyncObject[blocks];
-        RING_BLOCKS = new RingBufferBlock[blocks];
+        RING_BLOCKS = new SingleBufferRingBufferBlock[blocks];
         for (int i = 0; i < blocks; i++) {
             SYNC_OBJS[i] = new SyncObject();
-            RING_BLOCKS[i] = new RingBufferBlock(i * BYTES, BYTES, MAPPING.getRawData());
+            RING_BLOCKS[i] = new SingleBufferRingBufferBlock(BUFFER, i * BYTES, BYTES, MAPPING.getRawData());
         }
         currentBlock = blocks - 1;
     }
 
-    /**
-     * Will prepare the next block of memory in this ring buffer.That is, in
-     * case this block has been used previously already, it will wait for all
-     * commands that used this block to finish, otherwise it will return
-     * immediately. In any case, after this method returns, the now current
-     * block in this ring buffer can safely be used to write data without
-     * overriding data that is needed for previously started draw commands.
-     * NOTE: if you notice this method frequently stalls the CPU, consider
-     * increasing the block count
-     *
-     * @return the new current RingBufferBlock that can safely be used to send
-     * data to the GPU
-     */
+    @Override
     public RingBufferBlock next() {
-        if (RING_BLOCKS[currentBlock].valid) {
-            RING_BLOCKS[currentBlock].valid = false;
+        if (unmapped) {
+            throw new UnsupportedOperationException("This RingBuffer has already been unmapped");
         }
+        RING_BLOCKS[currentBlock].valid = false;
         currentBlock = (currentBlock + 1) % BLOCKS;
         SyncObject sync = SYNC_OBJS[currentBlock];
         if (sync.isPlaced()) {
@@ -82,17 +72,39 @@ public class RingBuffer {
             //System.out.println("waiting for sync took nanoseconds: " + dur + " = milliseconds: "+(dur / 1000000.0));
         }
 
-        RingBufferBlock block = RING_BLOCKS[currentBlock];
+        SingleBufferRingBufferBlock block = RING_BLOCKS[currentBlock];
         block.reset();
         return block;
     }
 
-    /**
-     * Needs to be called when all data has been uploaded and more importantly,
-     * all GL calls that will use that data have been made. The RingBufferBlock
-     * returned by the previous next() call is no longer valid
-     */
-    public void release() {
+    @Override
+    public void unmap() {
+        if (unmapped) {
+            throw new UnsupportedOperationException("This RingBuffer has already been unmapped");
+        }
+        MAPPING.unmap();
+        unmapped = true;
+    }
+
+    @Override
+    public int getBlockCount() {
+        return BLOCKS;
+    }
+
+    @Override
+    public int getBlockSize() {
+        return BYTES;
+    }
+
+    @Override
+    public UntypedBuffer getBuffer() {
+        return BUFFER;
+    }
+
+    private void release() {
+        if (unmapped) {
+            throw new UnsupportedOperationException("This RingBuffer has already been unmapped");
+        }
         SyncObject sync = SYNC_OBJS[currentBlock];
         if (sync.isPlaced()) {
             RENDERER.recycleSyncObject(sync);
@@ -101,43 +113,17 @@ public class RingBuffer {
         RING_BLOCKS[currentBlock].valid = false;
     }
 
-    /**
-     * Returns the number of blocks this ring buffer is made of
-     *
-     * @return num blocks
-     */
-    public int getBlockCount() {
-        return BLOCKS;
-    }
+    private class SingleBufferRingBufferBlock implements RingBufferBlock {
 
-    /**
-     * Returns the size in bytes of a single block
-     *
-     * @return size of 1 bock
-     */
-    public int getBlockSize() {
-        return BYTES;
-    }
-
-    /**
-     * Returns the underlying UntypedBuffer. Should only be used to create typed
-     * buffer views, not to change the buffers content.
-     *
-     * @return the underlying untyped buffer
-     */
-    public UntypedBuffer getBuffer() {
-        return BUFFER;
-    }
-
-    public static class RingBufferBlock {
-
+        private final UntypedBuffer UNTYPED;
         private final int START;
         private final int SIZE;
         private final ByteBuffer BUFFER;
         private int position = 0;
         private boolean valid = false;
 
-        private RingBufferBlock(int start, int length, ByteBuffer buffer) {
+        private SingleBufferRingBufferBlock(UntypedBuffer untyped, int start, int length, ByteBuffer buffer) {
+            UNTYPED = untyped;
             START = start;
             SIZE = length;
             BUFFER = buffer;
@@ -150,15 +136,7 @@ public class RingBuffer {
             position = START;
         }
 
-        /**
-         * Sets the current position relative to the start of this block, that
-         * is setPosition(0) will set the position to the start of the block and
-         * setPosition(ringBuffer.getBlockSize() - 1) will set it to the end of
-         * this block. After a call to ringBuffer.next() the position of the
-         * returned RingBufferBlock will be at 0
-         *
-         * @param pos the position to set it to
-         */
+        @Override
         public RingBufferBlock setPosition(int pos) {
             if (pos < 0 || pos >= SIZE) {
                 throw new IllegalArgumentException("pos must be in range 0 (incl) - " + SIZE + " (excl) but has value: " + pos);
@@ -167,11 +145,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified long at the current position
-         *
-         * @param value the value to set
-         */
+        @Override
         public RingBufferBlock putLong(long value) {
             validate(8);
             BUFFER.putLong(position, value);
@@ -179,11 +153,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified int at the current position
-         *
-         * @param value the value to set
-         */
+        @Override
         public RingBufferBlock putInt(int value) {
             validate(4);
             BUFFER.putInt(position, value);
@@ -191,11 +161,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified short at the current position
-         *
-         * @param value the value to set
-         */
+        @Override
         public RingBufferBlock putShort(short value) {
             validate(2);
             BUFFER.putShort(position, value);
@@ -203,18 +169,15 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified byte at the current position
-         *
-         * @param value the value to set
-         */
+        @Override
         public RingBufferBlock putByte(byte value) {
             validate(1);
             BUFFER.put(position, value);
             position++;
             return this;
         }
-        
+
+        @Override
         public RingBufferBlock putByte(ByteBuffer values) {
             int bytes = values.remaining();
             validate(bytes);
@@ -226,14 +189,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified segment of the provided byte array at the current
-         * position
-         *
-         * @param values the values to set
-         * @param offset offset into the provided array
-         * @param length length to read from the array
-         */
+        @Override
         public RingBufferBlock putByte(byte[] values, int offset, int length) {
             validate(length);
             int pos = BUFFER.position();
@@ -244,11 +200,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified float at the current position
-         *
-         * @param value the value to set
-         */
+        @Override
         public RingBufferBlock putFloat(float value) {
             validate(4);
             BUFFER.putFloat(position, value);
@@ -256,11 +208,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Puts the specified double at the current position
-         *
-         * @param value the value to set
-         */
+        @Override
         public RingBufferBlock putDouble(double value) {
             validate(8);
             BUFFER.putDouble(position, value);
@@ -268,12 +216,7 @@ public class RingBuffer {
             return this;
         }
 
-        /**
-         * Returns the limit of this RingBufferBlock. Equal to
-         * ringBuffer.getBlockSize()
-         *
-         * @return
-         */
+        @Override
         public int getLimit() {
             return SIZE;
         }
@@ -288,6 +231,21 @@ public class RingBuffer {
             if (!valid) {
                 throw new UnsupportedOperationException("This RingBufferBlock is currently invalid");
             }
+        }
+
+        @Override
+        public void finish() {
+            release();
+        }
+
+        @Override
+        public UntypedBuffer getBuffer() {
+            return UNTYPED;
+        }
+
+        @Override
+        public int getOffset() {
+            return START;
         }
 
     }

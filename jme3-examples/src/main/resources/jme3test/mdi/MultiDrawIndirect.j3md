@@ -1,0 +1,21 @@
+MaterialDef MultiDrawIndirect {
+
+    MaterialParameters {
+        Texture2D ColorMap
+        Boolean UseWorldMatrix
+    }
+
+    Technique {
+        VertexShader   GLSL330: jme3test/mdi/MultiDrawIndirect.vert
+        FragmentShader GLSL330: jme3test/mdi/MultiDrawIndirect.frag
+
+        WorldParameters { 
+            CameraBuffer;
+        }
+
+        Defines {
+            WORLD_MATRIX : UseWorldMatrix
+        }
+    }
+
+}

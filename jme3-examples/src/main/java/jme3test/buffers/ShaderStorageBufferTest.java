@@ -33,7 +33,7 @@ public class ShaderStorageBufferTest extends SimpleApplication {
         t.start();
     }
     
-    private static final int NUM_SPHERES = 64;
+    private static final int NUM_SPHERES = 128;
     
     @Override
     public void simpleInitApp() {
@@ -103,8 +103,8 @@ public class ShaderStorageBufferTest extends SimpleApplication {
             + "         return;\n"
             + "     }\n"
             + "     vec2 uv = (vec2(x) + 0.5) / vec2(imgSize);\n"
-            + "     vec3 dir = normalize(vec3((uv - 0.5) * 0.1, 1.0));\n"
-            + "     vec3 pos = vec3(0.0, 0.0, -1.0);\n"
+            + "     vec3 dir = normalize(vec3((uv - 0.5) * 1.5, 1.0));\n"
+            + "     vec3 pos = vec3(0.0, 0.0, -15.0);\n"
             + "     float d = 0.0;\n"
             + "     for (int i = 0; i < 512; i++) {\n"
             + "         float stepDist = sdfScene(pos);\n"
@@ -114,7 +114,7 @@ public class ShaderStorageBufferTest extends SimpleApplication {
             + "         pos += dir * 0.1;\n"   
             + "         d += 0.1;\n"     
             + "     }\n"
-            + "     imageStore(m_Output, x, vec4(pow(d / 100.0, 1.0/2.2)));\n"
+            + "     imageStore(m_Output, x, vec4(1.0 - pow(d / 100.0, 1.0/2.2)));\n"
             + "}\n";
     
     
