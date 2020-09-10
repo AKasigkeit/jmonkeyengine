@@ -482,8 +482,7 @@ public class UntypedBuffer extends NativeObject {
         if (!initialized) {
             throw new UnsupportedOperationException("cannot update data when this buffer has not yet been initialized");
         }
-
-        System.out.println("updateData: " + data.remaining() + " bytes at " + offset);
+ 
         updateOffset = offset;
         updatePosition = data.position();
         updateSize = data.remaining();

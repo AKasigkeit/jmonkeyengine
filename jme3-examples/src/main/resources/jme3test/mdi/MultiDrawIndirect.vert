@@ -15,7 +15,7 @@ void main(void) {
     #ifdef WORLD_MATRIX
     vec4 wsPos = inWorldMatrix * vec4(inPosition, 1.0);
     #else
-    vec4 wsPos = vec4(inPosition, 1.0) + vec4(float(inInstanceID) * 1.1, 0.0, 0.0, 0.0);
+    vec4 wsPos = vec4(inPosition, 1.0) + vec4(mod(inInstanceID, 100.0) * 1.1, (inInstanceID / 100.0) * 1.1, 0.0, 0.0);
     #endif
     gl_Position = cam_viewProjectionMatrix * wsPos;
 }

@@ -19,7 +19,7 @@ import com.jme3.texture.Texture;
  */
 public class CameraUniformBufferTest extends SimpleApplication {
 
-    public static final int NUM_GEOS = 1024 * 16;
+    public static final int NUM_GEOS = 1024 * 2;
 
     public static void main(String[] args) {
         CameraUniformBufferTest t = new CameraUniformBufferTest();

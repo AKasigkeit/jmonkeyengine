@@ -35,7 +35,7 @@ public class MDISystemTest extends SimpleApplication {
 
     private static final int NUM_OBJECTS = 16_000;
     private static boolean USE_WORLDMATRIX = true;
-    private static final int MULTI_BUFFERING = 1;
+    private static final int MULTI_BUFFERING = 2;
 
     public static void main(String[] args) {
         MDISystemTest t = new MDISystemTest();
