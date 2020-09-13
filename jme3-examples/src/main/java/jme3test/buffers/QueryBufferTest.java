@@ -46,26 +46,28 @@ public class QueryBufferTest extends SimpleApplication {
         t.start();
     }
 
+    private static final boolean USE_MAP = true;
+    private static final int NUM_OBJECTS = 512;
+
     private QueryBuffer queryBuffer = null;
     private IntMap<GpuQuery> queries = new IntMap<>();
 
     @Override
     public void simpleInitApp() {
-        int numObjects = 1024;
         UntypedBuffer buffer = UntypedBuffer.createNewStorageDirect(MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
-        buffer.initialize(numObjects * 4);
+        buffer.initialize(NUM_OBJECTS * 4);
         queryBuffer = buffer.asQueryBuffer();
         ShaderStorageBuffer ssbo = buffer.asShaderStorageBuffer(null);
         //ShaderStorageBuffer ssbo = ShaderStorageBuffer.createNewAutolayout();
-        int[] arr = new int[numObjects];
-        for (int i = 0; i < numObjects; i++) {
+        int[] arr = new int[NUM_OBJECTS];
+        for (int i = 0; i < NUM_OBJECTS; i++) {
             arr[i] = i;
         }
         ssbo.setField("samplesPassed", arr);
 
         Mesh mesh = new Box(1f, 1f, 1f);
 
-        for (int i = 0; i < numObjects; i++) {
+        for (int i = 0; i < NUM_OBJECTS; i++) {
             Geometry geo = new Geometry("geo_" + i, mesh);
             geo.setLocalTranslation((float) (Math.random() * 100 - 50), (float) (Math.random() * 100 - 50), (float) (Math.random() * 100 - 50));
             geo.setUserData("ID", Integer.valueOf(i));
@@ -73,7 +75,7 @@ public class QueryBufferTest extends SimpleApplication {
             Material mat = new Material(assetManager, "jme3test/qbo/QueryBuffer.j3md");
             mat.setTexture("ColorMap", assetManager.loadTexture("Textures/Terrain/splat/dirt.jpg"));
             mat.setShaderStorageBuffer("QueryResults", ssbo);
-            mat.setInt("NumQueries", numObjects);
+            mat.setInt("NumQueries", NUM_OBJECTS);
             mat.setInt("QueryIndex", i);
             geo.setMaterial(mat);
 
@@ -88,19 +90,16 @@ public class QueryBufferTest extends SimpleApplication {
     private class QuerySceneProcessor implements SceneProcessor {
 
         private final MemoryBarrierBits MEM = MemoryBarrierBits.from(MemoryBarrierBit.QuerBuffer);
+        private IntMap<GpuQuery> queriesMap = new IntMap<>();
 
         @Override
         public void preFrame(float tpf) {
-            try {
-                Thread.sleep(5);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(QueryBufferTest.class.getName()).log(Level.SEVERE, null, ex);
-            }
         }
 
         @Override
         public void postQueue(RenderQueue rq) {
             GeometryList opaque = rq.getList(RenderQueue.Bucket.Opaque);
+            queriesMap.clear();
             for (int i = 0; i < opaque.size(); i++) {
                 Geometry geo = opaque.get(i);
                 Integer id = geo.getUserData("ID");
@@ -109,8 +108,18 @@ public class QueryBufferTest extends SimpleApplication {
                 renderer.startQuery(query);
                 renderManager.renderGeometry(geo);
                 renderer.stopQuery(query);
-                queryBuffer.storeResult(query, id * 4, false, true);
+                if (USE_MAP) {
+                    queriesMap.put(id, query);
+                } else {
+                    queryBuffer.storeResult(query, id * 4, false, true);
+                }
             }
+            if (USE_MAP) {
+                for (IntMap.Entry<GpuQuery> e : queriesMap) {
+                    queryBuffer.storeResult(e.getValue(), e.getKey() * 4, false, true);
+                }
+            }
+
             renderManager.getRenderer().memoryBarrier(MEM);
             opaque.clear();
         }
