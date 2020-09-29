@@ -5,8 +5,12 @@
  */
 package com.jme3.scene.manager;
 
-import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.Camera;
+import com.jme3.renderer.RenderManager;
+import com.jme3.renderer.ViewPort; 
+import com.jme3.renderer.queue.GeometryList;
 import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.renderer.queue.RenderQueue.Bucket;
 import com.jme3.scene.Spatial;
 
 /**
@@ -18,6 +22,8 @@ import com.jme3.scene.Spatial;
  */
 public interface SceneRenderer {
 
-    public void renderScene(ViewPort vp, Spatial scene, RenderQueue queue);
+    public void renderScene(Spatial scene, ViewPort vp);
+    
+    public void postRenderBucket(RenderQueue queue, Bucket bucket, RenderManager rm, ViewPort vp, Camera cam);
 
 }

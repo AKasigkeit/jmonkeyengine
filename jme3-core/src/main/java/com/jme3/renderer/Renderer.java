@@ -678,4 +678,11 @@ public interface Renderer {
      * @param sync the SyncObject to recycle
      */
     public void recycleSyncObject(SyncObject sync);
+    
+    /**
+     * Generates mipmaps for the provided Texture
+     * @param tex the Texture to generate mipmaps for. Data of the Texture will 
+     * be taken and used to calculate lower resolution versions of it.
+     */
+    public void generateMipMaps(Texture tex);
 }

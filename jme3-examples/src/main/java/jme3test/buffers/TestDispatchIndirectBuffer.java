@@ -25,10 +25,10 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class DispatchIndirectBufferTest extends SimpleApplication {
+public class TestDispatchIndirectBuffer extends SimpleApplication {
 
     public static void main(String[] args) {
-        DispatchIndirectBufferTest t = new DispatchIndirectBufferTest();
+        TestDispatchIndirectBuffer t = new TestDispatchIndirectBuffer();
         t.start();
     }
 

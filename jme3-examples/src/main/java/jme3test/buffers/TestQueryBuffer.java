@@ -27,8 +27,6 @@ import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.util.IntMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -37,17 +35,16 @@ import java.util.logging.Logger;
  * ONLY WORK WITH LWJGL3, lwjgl2 forces to use the memory address of the
  * provided buffer instead of using it as offset
  *
- *
  */
-public class QueryBufferTest extends SimpleApplication {
+public class TestQueryBuffer extends SimpleApplication {
 
     public static void main(String[] args) {
-        QueryBufferTest t = new QueryBufferTest();
+        TestQueryBuffer t = new TestQueryBuffer();
         t.start();
     }
 
     private static final boolean USE_MAP = true;
-    private static final int NUM_OBJECTS = 512;
+    private static final int NUM_OBJECTS = 1024;
 
     private QueryBuffer queryBuffer = null;
     private IntMap<GpuQuery> queries = new IntMap<>();
@@ -91,6 +88,8 @@ public class QueryBufferTest extends SimpleApplication {
 
         private final MemoryBarrierBits MEM = MemoryBarrierBits.from(MemoryBarrierBit.QuerBuffer);
         private IntMap<GpuQuery> queriesMap = new IntMap<>();
+        private IntMap<GpuQuery> queriesMapLast = new IntMap<>();
+        private boolean first = true;
 
         @Override
         public void preFrame(float tpf) {
@@ -98,8 +97,11 @@ public class QueryBufferTest extends SimpleApplication {
 
         @Override
         public void postQueue(RenderQueue rq) {
+            IntMap<GpuQuery> putMap = first ? queriesMap : queriesMapLast;
+            IntMap<GpuQuery> getMap = first ? queriesMapLast : queriesMap;
+
             GeometryList opaque = rq.getList(RenderQueue.Bucket.Opaque);
-            queriesMap.clear();
+            putMap.clear();
             for (int i = 0; i < opaque.size(); i++) {
                 Geometry geo = opaque.get(i);
                 Integer id = geo.getUserData("ID");
@@ -109,19 +111,21 @@ public class QueryBufferTest extends SimpleApplication {
                 renderManager.renderGeometry(geo);
                 renderer.stopQuery(query);
                 if (USE_MAP) {
-                    queriesMap.put(id, query);
+                    putMap.put(id, query);
                 } else {
                     queryBuffer.storeResult(query, id * 4, false, true);
                 }
             }
             if (USE_MAP) {
-                for (IntMap.Entry<GpuQuery> e : queriesMap) {
+                for (IntMap.Entry<GpuQuery> e : getMap) {
                     queryBuffer.storeResult(e.getValue(), e.getKey() * 4, false, true);
                 }
             }
 
             renderManager.getRenderer().memoryBarrier(MEM);
             opaque.clear();
+
+            first = !first;
         }
 
         //DUMMY IMPLEMENTATION STUFF

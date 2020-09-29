@@ -161,7 +161,7 @@ public class IGLESContext implements JmeContext {
             gl = (IosGL)GLDebug.createProxy(gl, gl, GL.class, GLExt.class, GLFbo.class);
         }
 
-        renderer = new GLRenderer(gl, gl, gl);
+        renderer = new GLRenderer(gl, gl, gl, null);
         renderer.initialize();
         
         input = new IosInputHandler();

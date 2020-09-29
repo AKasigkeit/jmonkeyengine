@@ -7,6 +7,9 @@ package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.AtomicCounterBuffer;
+import com.jme3.buffer.UntypedBuffer;
+import com.jme3.buffer.UntypedBuffer.MemoryMode;
+import com.jme3.buffer.UntypedBuffer.StorageFlag;
 import com.jme3.compute.ComputeShader;
 import com.jme3.compute.ComputeShaderFactory;
 import com.jme3.compute.MemoryBarrierBits;
@@ -23,21 +26,26 @@ import com.jme3.texture.Texture2D;
  *
  * Test to demonstate usage of AtomicCounterBuffers in ComputeShaders. This test
  * visualizes the order in which ComputeShader invocations are run. Take a look
- * at https://www.geeks3d.com/20120309/opengl-4-2-atomic-counter-demo-rendering-order-of-fragments/ 
+ * at
+ * https://www.geeks3d.com/20120309/opengl-4-2-atomic-counter-demo-rendering-order-of-fragments/
  * except this test uses ComputeShaders instead of FragmentShaders
  *
  * @author Alexander Kasigkeit
  */
-public class AtomicCounterBufferTest extends SimpleApplication {
+public class TestAtomicCounterBufferReadBack extends SimpleApplication {
 
     public static void main(String[] args) {
-        AtomicCounterBufferTest t = new AtomicCounterBufferTest();
+        TestAtomicCounterBufferReadBack t = new TestAtomicCounterBufferReadBack();
         t.start();
     }
 
     @Override
     public void simpleInitApp() {
-        AtomicCounterBuffer acBuffer = AtomicCounterBuffer.createWithInitialValues(0, 0);
+        UntypedBuffer buffer = UntypedBuffer.createNewStorageDirect(MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
+        buffer.initialize(4); // 4 bytes = 1 uint
+        AtomicCounterBuffer acBuffer = buffer.asAtomicCounterBuffer(0);
+        acBuffer.setValues(0);
+        
         Texture2D tex = new Texture2D(512, 512, Image.Format.RGBA16F);
 
         Geometry geo = new Geometry("testgeo", new Box(1f, 1f, 1f));
@@ -50,7 +58,11 @@ public class AtomicCounterBufferTest extends SimpleApplication {
         ComputeShader shader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
         shader.setAtomicCouterBuffer("Counter", acBuffer);
         shader.setImage("Output", VarType.Texture2D, tex, Texture.Access.WriteOnly, 0, -1, true);
-        shader.run(512, 512, 32, 32, MemoryBarrierBits.from(MemoryBarrierBit.TextureFetch));
+        shader.run(512, 512, 32, 32, MemoryBarrierBits.from(MemoryBarrierBit.TextureFetch, MemoryBarrierBit.AtomicCounter));
+
+        int[] res = new int[1];
+        acBuffer.getValues(res);
+        System.out.println("COUNTER: "+res[0]+" / "+(512 * 512));
         
         flyCam.setMoveSpeed(10f);
     }

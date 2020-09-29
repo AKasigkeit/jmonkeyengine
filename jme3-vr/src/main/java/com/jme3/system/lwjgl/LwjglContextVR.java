@@ -185,7 +185,7 @@ public abstract class LwjglContextVR implements JmeContext {
                 glfbo = (GLFbo) GLTracer.createDesktopGlTracer(glfbo, GLFbo.class);
             }
 
-            renderer = new GLRenderer(gl, glext, glfbo);
+            renderer = new GLRenderer(gl, glext, glfbo, null);
             renderer.initialize();
         } else {
             throw new UnsupportedOperationException("Unsupported renderer: " + settings.getRenderer());

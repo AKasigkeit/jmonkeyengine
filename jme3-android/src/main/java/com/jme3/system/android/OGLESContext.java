@@ -210,7 +210,7 @@ public class OGLESContext implements JmeContext, GLSurfaceView.Renderer, SoftTex
         if (settings.getBoolean("GraphicsTrace")) {
             gl = (GL)GLTracer.createGlesTracer(gl, GL.class, GLES_30.class, GLFbo.class, GLExt.class);
         }
-        renderer = new GLRenderer(gl, (GLExt)gl, (GLFbo)gl);
+        renderer = new GLRenderer(gl, (GLExt)gl, (GLFbo)gl, null);
         renderer.initialize();
 
         JmeSystem.setSoftTextDialogInput(this);

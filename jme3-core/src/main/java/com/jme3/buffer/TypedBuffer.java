@@ -8,6 +8,7 @@ package com.jme3.buffer;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.opengl.GL3;
 import com.jme3.renderer.opengl.GL4;
+import com.jme3.renderer.opengl.GLIp;
 import com.jme3.util.BufferUtils;
 import java.nio.ByteBuffer;
 
@@ -52,14 +53,19 @@ public class TypedBuffer {
          * to the gpu at once. Look into documentation of DrawIndirectBuffer for
          * more details explanation.1
          */
-        DrawIndirectBuffer(Caps.OpenGL44, GL4.GL_DRAW_INDIRECT_BUFFER),
+        DrawIndirectBuffer(Caps.MultiDrawIndirect, GL4.GL_DRAW_INDIRECT_BUFFER),
         /**
          * Query Buffer. Can be used to store QueryObject results so they dont
          * have to be read back to the CPU. Can then be used in shaders to use
          * lower tessellation / cheaper lighting / otherwise less performance
          * heavy computations if the fragments drawn fall below some threshold.
          */
-        QueryBuffer(Caps.OpenGL44, GL4.GL_QUERY_BUFFER);
+        QueryBuffer(Caps.QueryBuffer, GL4.GL_QUERY_BUFFER),
+        /**
+         * Parameter Buffer. Can be used to store draw command parameters like
+         * 'count' for multi draw indirect calls
+         */
+        ParameterBuffer(Caps.IndirectParameters, GLIp.GL_PARAMETER_BUFFER);
 
         private final Caps CAPS;
         private final int GL_CONST;
@@ -77,24 +83,24 @@ public class TypedBuffer {
             return GL_CONST;
         }
     }
-    
+
     protected final Type TYPE;
     protected final UntypedBuffer BUFFER;
     private ByteBuffer dataBuffer = null;
-    
+
     protected TypedBuffer(UntypedBuffer buffer, Type type) {
         TYPE = type;
         BUFFER = buffer;
     }
-    
+
     public Type getType() {
         return TYPE;
     }
-    
+
     public UntypedBuffer getUntypedBuffer() {
         return BUFFER;
     }
-    
+
     //used by subclasses to write data into buffers via convenience methods in case underlying untyped buffer is gpu only
     protected ByteBuffer getByteBuffer(int size) {
         //TODO rather make it static and threadlocal for direct rendering

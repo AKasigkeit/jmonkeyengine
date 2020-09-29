@@ -34,6 +34,7 @@ package com.jme3.scene;
 import com.jme3.bounding.BoundingBox;
 import com.jme3.bounding.BoundingVolume;
 import com.jme3.buffer.DrawIndirectBuffer;
+import com.jme3.buffer.ParameterBuffer;
 import com.jme3.collision.Collidable;
 import com.jme3.collision.CollisionResults;
 import com.jme3.collision.bih.BIHTree;
@@ -202,6 +203,10 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
     private long drawIndirectOffset = 0L;
     private int drawIndirectCount = 0;
     private int drawIndirectStride = 0;
+    
+    private ParameterBuffer parameterBuffer = null;
+    private long parameterOffset = 0L;
+    private int parameterMaxCount = 0;
 
     private Mode mode = Mode.Triangles;
 
@@ -564,6 +569,34 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
     
     public int getDrawIndirectCount() {
         return drawIndirectCount;
+    }
+    
+    public boolean hasDrawParameterBuffer() {
+        return parameterBuffer != null;
+    }
+    
+    public void setDrawParameterBuffer(ParameterBuffer buffer) {
+        parameterBuffer = buffer;
+    }
+    
+    public void setDrawParametersOffset(long offset) {
+        parameterOffset = offset;
+    }
+    
+    public void setDrawParametersMaxCount(int count) {
+        parameterMaxCount = count;
+    }
+    
+    public ParameterBuffer getDrawParameterBuffer() {
+        return parameterBuffer;
+    }
+     
+    public long getDrawParameterOffset() {
+        return parameterOffset;
+    }
+    
+    public int getDrawParameterMaxCount() {
+        return parameterMaxCount;
     }
 
     /**

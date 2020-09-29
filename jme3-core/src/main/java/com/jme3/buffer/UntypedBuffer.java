@@ -482,7 +482,7 @@ public class UntypedBuffer extends NativeObject {
         if (!initialized) {
             throw new UnsupportedOperationException("cannot update data when this buffer has not yet been initialized");
         }
- 
+
         updateOffset = offset;
         updatePosition = data.position();
         updateSize = data.remaining();
@@ -498,7 +498,7 @@ public class UntypedBuffer extends NativeObject {
             updateBuffer = data; //since theres no cpu data buffer, remember this one (if in lazy mode, it will be overridden)
         } else {
             if (offset + updateSize > cpuData.capacity()) { //grow 
-                ByteBuffer newBuffer = BufferUtils.createByteBuffer(Math.max(offset + updateSize, data.capacity())); 
+                ByteBuffer newBuffer = BufferUtils.createByteBuffer(Math.max(offset + updateSize, data.capacity()));
                 for (int i = 0; i < Math.min(offset, cpuData.capacity()); i++) {
                     newBuffer.put(i, cpuData.get(i));
                 }
@@ -1063,6 +1063,20 @@ public class UntypedBuffer extends NativeObject {
         vb.setOffset(offset);
         vb.setStride(stride);
         return vb;
+    }
+
+    /**
+     * Creates a new ParameterBuffer view on this UntypedBuffer.
+     * ParameterBuffers can be used to store the count for multiDrawIndirect
+     * commands
+     *
+     * @return a new ParameterBuffer view on this buffer
+     */
+    public ParameterBuffer asParameterBuffer() {
+        if (!initialized) {
+            throw new UnsupportedOperationException("Cannot create typed view on this buffer when it is not yet initialized");
+        }
+        return new ParameterBuffer(this);
     }
 
     /**

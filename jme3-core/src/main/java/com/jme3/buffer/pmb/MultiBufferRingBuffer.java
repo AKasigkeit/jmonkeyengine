@@ -50,7 +50,7 @@ public class MultiBufferRingBuffer implements RingBuffer {
             BUFFERS[i].initialize(bytes);
             MAPPINGS[i] = BUFFERS[i].mapBuffer(MappingFlag.Write, MappingFlag.Persistent, MappingFlag.Coherent);
             SYNC_OBJS[i] = new SyncObject();
-            RING_BLOCKS[i] = new MultiBufferRingBufferBlock(BUFFERS[i], 0, BYTES, MAPPINGS[i].getRawData());
+            RING_BLOCKS[i] = new MultiBufferRingBufferBlock(i, BUFFERS[i], 0, BYTES, MAPPINGS[i].getRawData());
         }
         currentBlock = blocks - 1;
     }
@@ -106,6 +106,10 @@ public class MultiBufferRingBuffer implements RingBuffer {
     public UntypedBuffer getBuffer() {
         return BUFFERS[currentBlock];
     }
+    
+    public UntypedBuffer getBuffer(int ringIndex) {
+        return BUFFERS[ringIndex];
+    }
 
     private void release() {
         if (unmapped) {
@@ -121,6 +125,7 @@ public class MultiBufferRingBuffer implements RingBuffer {
 
     private class MultiBufferRingBufferBlock implements RingBufferBlock {
 
+        private final int INDEX;
         private final UntypedBuffer UNTYPED;
         private final int START;
         private final int SIZE;
@@ -128,7 +133,8 @@ public class MultiBufferRingBuffer implements RingBuffer {
         private int position = 0;
         private boolean valid = false;
 
-        private MultiBufferRingBufferBlock(UntypedBuffer untyped, int start, int length, ByteBuffer buffer) {
+        private MultiBufferRingBufferBlock(int index, UntypedBuffer untyped, int start, int length, ByteBuffer buffer) {
+            INDEX = index;
             UNTYPED = untyped;
             START = start;
             SIZE = length;
@@ -252,6 +258,16 @@ public class MultiBufferRingBuffer implements RingBuffer {
         @Override
         public int getOffset() {
             return START;
+        }
+
+        @Override
+        public int getPosition() {
+            return position;
+        }
+        
+        @Override
+        public int getIndex() {
+            return INDEX;
         }
 
     }

@@ -31,12 +31,26 @@ public class DrawIndirectBuffer extends TypedBuffer {
         DrawIndices
     }
 
-    public static class DrawCommand { 
+    public static class DrawCommand {
 
         private final int count;
         private final int instanceCount;
         private final int first;
         private final int baseInstance;
+
+        /**
+         * Creates a new DrawCommand
+         *
+         * @param count num vertices to draw
+         * @param instanceCount num instances to draw
+         * @param first offset into vertex data
+         * @param baseInstance offset into instance data
+         * @return new DrawCommand
+         */
+        public static DrawCommand withValues(int count, int instanceCount, int first, int baseInstance) {
+            //exists purely because IDEs tend to show javadoc for methods more than constructors
+            return new DrawCommand(count, instanceCount, first, baseInstance);
+        }
 
         public DrawCommand(int count, int instanceCount, int first, int baseInstance) {
             this.count = count;
@@ -89,6 +103,21 @@ public class DrawIndirectBuffer extends TypedBuffer {
         private final int firstIndex;
         private final int baseVertex;
         private final int baseInstance;
+
+        /**
+         * Creates a new DrawIndicesCommand
+         *
+         * @param count num indices to draw
+         * @param instanceCount num instances to draw
+         * @param firstIndex offset into indices
+         * @param baseVertex offset into vertex data
+         * @param baseInstance offset into intance data
+         * @return new DrawIndicesCommand
+         */
+        public static DrawIndicesCommand withValues(int count, int instanceCount, int firstIndex, int baseVertex, int baseInstance) {
+            //exists purely because IDEs tend to show javadoc for methods more than constructors
+            return new DrawIndicesCommand(count, instanceCount, firstIndex, baseVertex, baseInstance);
+        }
 
         public DrawIndicesCommand(int count, int instanceCount, int firstIndex, int baseVertex, int baseInstance) {
             this.count = count;
@@ -237,7 +266,7 @@ public class DrawIndirectBuffer extends TypedBuffer {
             BUFFER.updateData(data, offset);
         }
     }
-    
+
     public DrawIndirectMode getDrawMode() {
         return MODE;
     }

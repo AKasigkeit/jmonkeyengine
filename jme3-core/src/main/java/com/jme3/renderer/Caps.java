@@ -149,6 +149,10 @@ public enum Caps {
      */
     OpenGL45,
     /**
+     * Supports OpenGL 4.6
+     */
+    OpenGL46,
+    /**
      * Do not use.
      * 
      * @deprecated do not use.
@@ -214,6 +218,10 @@ public enum Caps {
      * Supports GLSL 4.5
      */
     GLSL450,
+    /**
+     * Supports GLSL 4.5
+     */
+    GLSL460,
     /**
      * Supports reading from textures inside the vertex shader.
      */
@@ -477,7 +485,12 @@ public enum Caps {
      * Implementation supports loading query results into a special buffer without
      * loading it back to CPU
      */
-    QueryBuffer
+    QueryBuffer,
+    
+    /**
+     * Implementation supports sourcing draw command parameters from GL_PARAMETER_BUFFER
+     */
+    IndirectParameters,
     ;
 
     /**

@@ -55,6 +55,8 @@ import com.jme3.renderer.lwjgl.LwjglGL;
 import com.jme3.renderer.lwjgl.LwjglGLExt;
 import com.jme3.renderer.lwjgl.LwjglGLFboEXT;
 import com.jme3.renderer.lwjgl.LwjglGLFboGL3;
+import com.jme3.renderer.lwjgl.LwjglGLIpEXT;
+import com.jme3.renderer.lwjgl.LwjglGLIpGL46;
 import com.jme3.renderer.opengl.*;
 import com.jme3.system.AppSettings;
 import com.jme3.system.JmeContext;
@@ -188,17 +190,25 @@ public abstract class LwjglContext implements JmeContext {
         GL gl = new LwjglGL();
         GLExt glext = new LwjglGLExt();
         GLFbo glfbo;
+        GLIp glip;
 
         if (capabilities.OpenGL30) {
             glfbo = new LwjglGLFboGL3();
         } else {
             glfbo = new LwjglGLFboEXT();
         }
+        
+        if (capabilities.OpenGL46) {
+            glip = new LwjglGLIpGL46();
+        } else {
+            glip = new LwjglGLIpEXT();
+        }
 
         if (settings.getBoolean("GraphicsDebug")) {
             gl = (GL) GLDebug.createProxy(gl, gl, GL.class, GL2.class, GL3.class, GL4.class);
             glext = (GLExt) GLDebug.createProxy(gl, glext, GLExt.class);
             glfbo = (GLFbo) GLDebug.createProxy(gl, glfbo, GLFbo.class);
+            glip = (GLIp) GLDebug.createProxy(gl, glip, GLIp.class);
         }
 
         if (settings.getBoolean("GraphicsTiming")) {
@@ -206,15 +216,17 @@ public abstract class LwjglContext implements JmeContext {
             gl = (GL) GLTiming.createGLTiming(gl, timingState, GL.class, GL2.class, GL3.class, GL4.class);
             glext = (GLExt) GLTiming.createGLTiming(glext, timingState, GLExt.class);
             glfbo = (GLFbo) GLTiming.createGLTiming(glfbo, timingState, GLFbo.class);
+            glip = (GLIp) GLTiming.createGLTiming(glip, timingState, GLIp.class);
         }
 
         if (settings.getBoolean("GraphicsTrace")) {
             gl = (GL) GLTracer.createDesktopGlTracer(gl, GL.class, GL2.class, GL3.class, GL4.class);
             glext = (GLExt) GLTracer.createDesktopGlTracer(glext, GLExt.class);
             glfbo = (GLFbo) GLTracer.createDesktopGlTracer(glfbo, GLFbo.class);
+            glip = (GLIp) GLTracer.createDesktopGlTracer(glip, GLIp.class);
         }
 
-        this.renderer = new GLRenderer(gl, glext, glfbo);
+        this.renderer = new GLRenderer(gl, glext, glfbo, glip);
         this.renderer.initialize();
 
         if (capabilities.GL_ARB_debug_output && settings.getBoolean("GraphicsDebug")) {

@@ -402,6 +402,22 @@ public class ComputeShader {
 
     /**
      * Runs this ComputeShader with the work group counts calculated by ceiling
+     * the result of calculating total over local sizes. That guarantees there
+     * is always enough invocations to cover the specified total problem size,
+     * although some invocations might be "out of bounds" if the total size %
+     * local size is not 0
+     *
+     * @param totalX total number of invotations in x dimension
+     * @param localX local size of the compute shader in x dimension
+     * @param memBarrier memory barriers to set
+     */
+    public void run(int totalX, int localX, MemoryBarrierBits memBarrier) {
+        int x = (int) Math.ceil(totalX / (double) localX);
+        run(x, 1, 1, memBarrier);
+    }
+
+    /**
+     * Runs this ComputeShader with the work group counts calculated by ceiling
      * the result of calculating total over local sizes.That guarantees there is
      * always enough invocations to cover the specified total problem size,
      * although some invocations might be "out of bounds" if the total size %

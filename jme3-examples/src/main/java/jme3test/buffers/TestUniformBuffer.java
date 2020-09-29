@@ -26,10 +26,10 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class UniformBufferTest extends SimpleApplication {
+public class TestUniformBuffer extends SimpleApplication {
 
     public static void main(String[] args) {
-        UniformBufferTest t = new UniformBufferTest();
+        TestUniformBuffer t = new TestUniformBuffer();
         t.start();
     }
 

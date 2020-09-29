@@ -14,6 +14,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
 import com.jme3.shader.VarType;
 import com.jme3.shader.layout.BlockLayout;
+import com.jme3.util.BufferUtils;
 import com.jme3.util.SafeArrayList;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -27,8 +28,20 @@ public abstract class FieldBuffer extends TypedBuffer {
 
     public static interface FieldBufferWriter {
 
+        public static final FieldBufferWriter NULL_WRITER = new FieldBufferWriter() {
+            @Override
+            public void writeField(ByteBuffer buffer, BlockField field) {
+
+            }
+
+            @Override
+            public int getBufferSize() {
+                return 0;
+            }
+        };
+
         public void writeField(ByteBuffer buffer, BlockField field);
-        
+
         public int getBufferSize();
     }
 
@@ -90,7 +103,7 @@ public abstract class FieldBuffer extends TypedBuffer {
     protected final Map<String, BlockField> fieldsMap = new HashMap<>();
     private final FieldBufferWriter WRITER;
 
-    protected BlockLayout layout = null; 
+    protected BlockLayout layout = null;
     private boolean fieldsChanged = false;
 
     protected FieldBuffer(UntypedBuffer buffer, Type type, FieldBufferWriter writer) {
@@ -143,10 +156,22 @@ public abstract class FieldBuffer extends TypedBuffer {
         if (!fieldsChanged) {
             return;
         }
-        if (layout == null) {
-            throw new UnsupportedOperationException("Cannot flush field updates when the layout is unknown");
+        if (WRITER != null) {
+            //TODO improve memorywise
+            if (WRITER.getBufferSize() > 0) {
+                ByteBuffer buf = BufferUtils.createByteBuffer(WRITER.getBufferSize());
+                for (BlockField field : fields.getArray()) {
+                    WRITER.writeField(buf, field);
+                }
+                buf.position(0).limit(WRITER.getBufferSize());
+                BUFFER.updateData(buf, 0);
+            }
+        } else {
+            if (layout == null) {
+                throw new UnsupportedOperationException("Cannot flush field updates when the layout is unknown");
+            }
+            flushFieldUpdatesSpecific();
         }
-        flushFieldUpdatesSpecific();
         fieldsChanged = false;
     }
 

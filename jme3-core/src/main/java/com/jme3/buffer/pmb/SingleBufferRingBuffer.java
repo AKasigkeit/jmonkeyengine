@@ -49,7 +49,7 @@ public class SingleBufferRingBuffer implements RingBuffer {
         RING_BLOCKS = new SingleBufferRingBufferBlock[blocks];
         for (int i = 0; i < blocks; i++) {
             SYNC_OBJS[i] = new SyncObject();
-            RING_BLOCKS[i] = new SingleBufferRingBufferBlock(BUFFER, i * BYTES, BYTES, MAPPING.getRawData());
+            RING_BLOCKS[i] = new SingleBufferRingBufferBlock(i, BUFFER, i * BYTES, BYTES, MAPPING.getRawData());
         }
         currentBlock = blocks - 1;
     }
@@ -115,6 +115,7 @@ public class SingleBufferRingBuffer implements RingBuffer {
 
     private class SingleBufferRingBufferBlock implements RingBufferBlock {
 
+        private final int INDEX;
         private final UntypedBuffer UNTYPED;
         private final int START;
         private final int SIZE;
@@ -122,7 +123,8 @@ public class SingleBufferRingBuffer implements RingBuffer {
         private int position = 0;
         private boolean valid = false;
 
-        private SingleBufferRingBufferBlock(UntypedBuffer untyped, int start, int length, ByteBuffer buffer) {
+        private SingleBufferRingBufferBlock(int index, UntypedBuffer untyped, int start, int length, ByteBuffer buffer) {
+            INDEX = index;
             UNTYPED = untyped;
             START = start;
             SIZE = length;
@@ -246,6 +248,16 @@ public class SingleBufferRingBuffer implements RingBuffer {
         @Override
         public int getOffset() {
             return START;
+        }
+
+        @Override
+        public int getPosition() {
+            return position;
+        }
+
+        @Override
+        public int getIndex() {
+            return INDEX;
         }
 
     }

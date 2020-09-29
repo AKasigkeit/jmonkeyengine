@@ -6,9 +6,9 @@
 package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.buffer.pmb.MultiBufferRingBuffer;
 import com.jme3.buffer.pmb.RingBuffer;
 import com.jme3.buffer.pmb.RingBuffer.RingBufferBlock;
-import com.jme3.buffer.pmb.SingleBufferRingBuffer;
 import com.jme3.material.Material;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
@@ -25,7 +25,7 @@ import java.nio.IntBuffer;
  *
  * @author Alexander Kasigkeit
  */
-public class RingBufferTest extends SimpleApplication {
+public class TestRingBuffer extends SimpleApplication {
 
     //  2_000    1   0.0004
     //  2_000    2   0.00025  =  x1.6
@@ -39,16 +39,18 @@ public class RingBufferTest extends SimpleApplication {
     // the 64_000 objects, 3 buffer blocks example is giving me a frame time of 0.005 seconds (= 200 FPS)
     // thos objects take 5_120_000 bytes (= 5.12 MB), which is 1 GB of data each second (200 fps * 5 mb data).
     //
-    private static final int NUM_BLOCKS = 2;
+    private static final int MULTI_BUFFERING = 3;
     private static final int NUM_OBJS = 64_000;
     private static final float SCREEN_RANGE = 50f;
 
     public static void main(String[] args) {
-        RingBufferTest t = new RingBufferTest();
+        TestRingBuffer t = new TestRingBuffer();
         t.start();
     }
 
-    private RingBuffer ringBuffer;
+    private MultiBufferRingBuffer ringBuffer;
+    private Mesh mesh = null;
+    private VertexBuffer[] posBuffer, texBuffer;
     private RingBufferBlock currentBlock = null;
     private float[] SEEDS = new float[NUM_OBJS];
     private float time = 0f;
@@ -65,9 +67,13 @@ public class RingBufferTest extends SimpleApplication {
         int totalSize = NUM_OBJS * bytesPerObject;
         System.out.println("total bytes per block: " + totalSize);
 
-        ringBuffer = new SingleBufferRingBuffer(renderer, totalSize, NUM_BLOCKS);
-        VertexBuffer posBuffer = ringBuffer.getBuffer().asVertexBuffer(VertexBuffer.Type.Position, VertexBuffer.Format.Float, 3, bytesPerVertex, 0);
-        VertexBuffer texBuffer = ringBuffer.getBuffer().asVertexBuffer(VertexBuffer.Type.TexCoord, VertexBuffer.Format.Float, 2, bytesPerVertex, 3 * 4);
+        ringBuffer = new MultiBufferRingBuffer(renderer, totalSize, MULTI_BUFFERING);
+        posBuffer = new VertexBuffer[MULTI_BUFFERING];
+        texBuffer = new VertexBuffer[MULTI_BUFFERING];
+        for (int i = 0; i < MULTI_BUFFERING; i++) {
+            posBuffer[i] = ringBuffer.getBuffer(i).asVertexBuffer(VertexBuffer.Type.Position, VertexBuffer.Format.Float, 3, bytesPerVertex, 0);
+            texBuffer[i] = ringBuffer.getBuffer(i).asVertexBuffer(VertexBuffer.Type.TexCoord, VertexBuffer.Format.Float, 2, bytesPerVertex, 3 * 4);
+        }
         VertexBuffer indexBuffer = new VertexBuffer(VertexBuffer.Type.Index);
         IntBuffer indexData = BufferUtils.createIntBuffer(NUM_OBJS * 6);
         for (int i = 0; i < NUM_OBJS; i++) {
@@ -76,10 +82,10 @@ public class RingBufferTest extends SimpleApplication {
         }
         indexBuffer.setupData(VertexBuffer.Usage.Static, 1, VertexBuffer.Format.UnsignedInt, indexData);
 
-        Mesh mesh = new Mesh();
+        mesh = new Mesh();
         mesh.setBuffer(indexBuffer);
-        mesh.setBuffer(posBuffer);
-        mesh.setBuffer(texBuffer);
+        mesh.setBuffer(posBuffer[0]);
+        mesh.setBuffer(texBuffer[0]);
 
         Geometry geo = new Geometry("quad", mesh);
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -122,6 +128,10 @@ public class RingBufferTest extends SimpleApplication {
                     .putFloat(x + 1f).putFloat(y + 1f).putFloat(z).putFloat(1f).putFloat(1f)
                     .putFloat(x).putFloat(y + 1f).putFloat(z).putFloat(0f).putFloat(1f);
         }
+        mesh.clearBuffer(VertexBuffer.Type.Position);
+        mesh.clearBuffer(VertexBuffer.Type.TexCoord);
+        mesh.setBuffer(posBuffer[currentBlock.getIndex()]);
+        mesh.setBuffer(texBuffer[currentBlock.getIndex()]);
     }
 
 }

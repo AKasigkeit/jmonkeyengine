@@ -157,5 +157,20 @@ public interface RingBuffer {
          * @return the untyped buffer
          */
         public UntypedBuffer getBuffer();
+
+        /**
+         * Returns the current position in bytes relative to the start of this
+         * RingBufferBlock
+         *
+         * @return position in bytes
+         */
+        public int getPosition();
+
+        /**
+         * Returns the index of the RingBufferBlock for this RingBuffer
+         *
+         * @return rinfbufferblock index
+         */
+        public int getIndex();
     }
 }

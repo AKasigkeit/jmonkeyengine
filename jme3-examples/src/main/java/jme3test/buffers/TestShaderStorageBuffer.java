@@ -26,10 +26,10 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class ShaderStorageBufferTest extends SimpleApplication {
+public class TestShaderStorageBuffer extends SimpleApplication {
 
     public static void main(String[] args) {
-        ShaderStorageBufferTest t = new ShaderStorageBufferTest();
+        TestShaderStorageBuffer t = new TestShaderStorageBuffer();
         t.start();
     }
     

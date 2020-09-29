@@ -9,6 +9,8 @@ import com.jme3.renderer.opengl.GLRenderer;
 import com.jme3.renderer.lwjgl.LwjglGLExt;
 import com.jme3.renderer.lwjgl.LwjglGLFboEXT;
 import com.jme3.renderer.Caps;
+import com.jme3.renderer.lwjgl.LwjglGLIpEXT;
+import com.jme3.renderer.opengl.GLIp;
 
 import java.util.EnumSet;
 
@@ -28,7 +30,8 @@ public class TestAlphaToCoverage extends SimpleApplication {
     public GL gl = new LwjglGL();
     public GLExt glext = new LwjglGLExt();
     public GLFbo glfbo = new LwjglGLFboEXT();
-    private GLRenderer glRenderer= new GLRenderer(gl,glext,glfbo);
+    public GLIp glip = new LwjglGLIpEXT();
+    private GLRenderer glRenderer= new GLRenderer(gl,glext,glfbo,glip);
 
     public EnumSet<Caps> caps = glRenderer.getCaps();
 

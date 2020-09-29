@@ -368,4 +368,8 @@ public class NullRenderer implements Renderer {
     @Override
     public void recycleSyncObject(SyncObject sync) { 
     }
+
+    @Override
+    public void generateMipMaps(Texture tex) { 
+    }
 }

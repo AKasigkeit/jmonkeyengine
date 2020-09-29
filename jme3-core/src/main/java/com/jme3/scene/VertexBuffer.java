@@ -231,6 +231,10 @@ public class VertexBuffer extends NativeObject implements Savable, Cloneable {
         WorldMatrix,
         Rotation,
         Scale,
+        Translation,
+        BoundingCenter,
+        BoundingExtents,
+        BoundingRadius,
         InstanceID,
     }
 

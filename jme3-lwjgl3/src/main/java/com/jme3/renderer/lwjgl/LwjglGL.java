@@ -47,9 +47,8 @@ import java.nio.ShortBuffer;
  * The LWJGL implementation of interfaces {@link GL}, {@link GL2}, {@link GL3}, {@link GL4}.
  */
 public class LwjglGL extends LwjglRender implements GL, GL2, GL3, GL4 {
-
     @Override
-    public void resetStats() {
+    public void resetStats() {  
     }
 
     @Override

@@ -868,6 +868,7 @@ public class RenderManager {
      * @see #renderTranslucentQueue(com.jme3.renderer.ViewPort) 
      */
     public void renderViewPortQueues(ViewPort vp, boolean flush) {
+        SceneRenderer sceneRenderer = vp.getSceneRenderer();
         RenderQueue rq = vp.getQueue();
         Camera cam = vp.getCamera();
         boolean depthRangeChanged = false;
@@ -876,6 +877,7 @@ public class RenderManager {
         // opaque objects are sorted front-to-back, reducing overdraw
         if (prof!=null) prof.vpStep(VpStep.RenderBucket, vp, Bucket.Opaque);
         rq.renderQueue(Bucket.Opaque, this, cam, flush);
+        if (sceneRenderer != null) sceneRenderer.postRenderBucket(rq, Bucket.Opaque, this, vp, cam);
 
         // render the sky, with depth range set to the farthest
         if (!rq.isQueueEmpty(Bucket.Sky)) {
@@ -884,6 +886,7 @@ public class RenderManager {
             rq.renderQueue(Bucket.Sky, this, cam, flush);
             depthRangeChanged = true;
         }
+        if (sceneRenderer != null) sceneRenderer.postRenderBucket(rq, Bucket.Sky, this, vp, cam);
 
 
         // transparent objects are last because they require blending with the
@@ -898,6 +901,7 @@ public class RenderManager {
 
             rq.renderQueue(Bucket.Transparent, this, cam, flush);
         }
+        if (sceneRenderer != null) sceneRenderer.postRenderBucket(rq, Bucket.Transparent, this, vp, cam);
 
         if (!rq.isQueueEmpty(Bucket.Gui)) {
             if (prof!=null) prof.vpStep(VpStep.RenderBucket, vp, Bucket.Gui);
@@ -907,6 +911,7 @@ public class RenderManager {
             setCamera(cam, false);
             depthRangeChanged = true;
         }
+        if (sceneRenderer != null) sceneRenderer.postRenderBucket(rq, Bucket.Gui, this, vp, cam);
 
         // restore range to default
         if (depthRangeChanged) {
@@ -1096,7 +1101,7 @@ public class RenderManager {
         SceneRenderer sceneRenderer = vp.getSceneRenderer();
         if (sceneRenderer != null) {
             for (int i = scenes.size() - 1; i >= 0; i--) {  
-                sceneRenderer.renderScene(vp, scenes.get(i), vp.getQueue());
+                sceneRenderer.renderScene(scenes.get(i), vp);
             }
         } else {
             for (int i = scenes.size() - 1; i >= 0; i--) {            

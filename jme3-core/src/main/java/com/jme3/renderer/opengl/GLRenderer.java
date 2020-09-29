@@ -35,6 +35,7 @@ import com.jme3.buffer.AtomicCounterBuffer;
 import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.buffer.DrawIndirectBuffer;
 import com.jme3.buffer.FieldBuffer;
+import com.jme3.buffer.ParameterBuffer;
 import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
 import com.jme3.buffer.UntypedBuffer;
@@ -130,15 +131,17 @@ public final class GLRenderer implements Renderer {
     private final GL4 gl4;
     private final GLExt glext;
     private final GLFbo glfbo;
+    private final GLIp glip;
     private final TextureUtil texUtil;
 
-    public GLRenderer(GL gl, GLExt glext, GLFbo glfbo) {
+    public GLRenderer(GL gl, GLExt glext, GLFbo glfbo, GLIp glip) {
         this.gl = gl;
         this.gl2 = gl instanceof GL2 ? (GL2)gl : null;
         this.gl3 = gl instanceof GL3 ? (GL3)gl : null;
         this.gl4 = gl instanceof GL4 ? (GL4)gl : null;
         this.glfbo = glfbo;
         this.glext = glext;
+        this.glip = glip;
         this.texUtil = new TextureUtil(gl, gl2, glext);
     }
 
@@ -261,6 +264,9 @@ public final class GLRenderer implements Renderer {
             if (oglVer >= 450) {
                 caps.add(Caps.OpenGL45);
             }
+            if (oglVer >= 460) {
+                caps.add(Caps.OpenGL46);
+            }
         }
 
         int glslVer = extractVersion(gl.glGetString(GL.GL_SHADING_LANGUAGE_VERSION));
@@ -272,6 +278,8 @@ public final class GLRenderer implements Renderer {
                 }
                 // so that future OpenGL revisions won't break jme3
                 // fall through intentional
+            case 460:
+                caps.add(Caps.GLSL460);
             case 450:
                 caps.add(Caps.GLSL450);
             case 440:
@@ -581,6 +589,10 @@ public final class GLRenderer implements Renderer {
             caps.add(Caps.ImageLoadStore);
             limits.put(Limits.ImageUnits, getInteger(GL4.GL_MAX_IMAGE_UNITS));
         }  
+        
+        if (hasExtension("GL_ARB_indirect_parameters") || caps.contains(Caps.OpenGL46)) {
+            caps.add(Caps.IndirectParameters);
+        }
         
         if (caps.contains(Caps.OpenGL42)) {
             limits.put(Limits.AtomicCounterBufferMaxBindings, getInteger(GL4.GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS));
@@ -1424,7 +1436,7 @@ public final class GLRenderer implements Renderer {
         } else {
             //TypedBuffer
             int shaderId = shader.getId();
-            setBuffer(bufferBlock.getName(), typedBuffer);
+            int unit = setBuffer(bufferBlock.getName(), typedBuffer);
             boolean isSSBOorUBO = typedBuffer.getType() == TypedBuffer.Type.UniformBuffer || typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer;
         
             int index = bufferBlock.getIndex();
@@ -1447,7 +1459,7 @@ public final class GLRenderer implements Renderer {
                     }
                 }
             }
-            int unit = setBuffer(bufferBlock.getName(), typedBuffer); 
+            //unit = setBuffer(bufferBlock.getName(), typedBuffer); 
             if (unit != bufferBlock.getBoundUnit()) {
                 if (typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer) {
                     gl4.glShaderStorageBlockBinding(shaderId, index, unit);
@@ -2569,6 +2581,28 @@ public final class GLRenderer implements Renderer {
         context.boundTextures[unit].update = context.nextTextureBindingNumber++;
     }
     
+    @Override
+    public void generateMipMaps(Texture tex) { 
+        Image img = tex.getImage();
+        //if (img == null || img.getId() == -1) {
+        //    throw new IllegalArgumentException("cannot generate mipmaps for texture that has not yet been created");
+        //} 
+        //int unit = getPreferredTexUnit(tex);
+        //bindTextureAndUnit(target, img, unit);
+        
+        int unit = setTexture(tex);
+        int target = convertTextureType(tex.getType(), img.getMultiSamples(), -1);
+        bindTextureAndUnit(target, img, unit);
+        
+        gl.glTexParameteri(target, GL2.GL_TEXTURE_MAX_LEVEL, img.getMipMapSizes().length - 1);
+        if (!caps.contains(Caps.FrameBuffer) && gl2 != null) {
+            gl2.glTexParameteri(target, GL2.GL_GENERATE_MIPMAP, GL.GL_TRUE);
+        } else {
+            glfbo.glGenerateMipmapEXT(target);
+        }
+        img.setMipmapsGenerated(true);
+    }
+    
     /**
      * Uploads the given image to the GL driver.
      *
@@ -2611,11 +2645,11 @@ public final class GLRenderer implements Renderer {
                 if (img.hasMipmaps()) {
                     // Image already has mipmaps, set the max level based on the 
                     // number of mipmaps we have.
-                    gl.glTexParameteri(target, GL2.GL_TEXTURE_MAX_LEVEL, img.getMipMapSizes().length - 1);
+                    gl.glTexParameteri(target, GL2.GL_TEXTURE_MAX_LEVEL, img.getMipMapSizes().length - 1); 
                 } else {
                     // Image does not have mipmaps and they are not required.
                     // Specify that that the texture has no mipmaps.
-                    gl.glTexParameteri(target, GL2.GL_TEXTURE_MAX_LEVEL, 0);
+                    gl.glTexParameteri(target, GL2.GL_TEXTURE_MAX_LEVEL, 0); 
                 }
             }
         } else {
@@ -2707,21 +2741,24 @@ public final class GLRenderer implements Renderer {
         img.clearUpdateNeeded();
     }
     
-    private int getPreferredImageUnit(Texture tex) {
-        int unit = 0;
+    private int getPreferredImageUnit(Texture tex, int layer, int level, int access) {
+        int unit = -1;
         int lowest = Integer.MAX_VALUE;
         int lowestIndex = -1;
         
         for (int i = 0; i < context.boundImages.length; i++) {
             ImageBinding texBinding = context.boundImages[i];
-            if (texBinding.image == tex.getImage()) {
+            if (texBinding.image == tex.getImage()
+                    && texBinding.level == level
+                    && texBinding.layer == layer
+                    && texBinding.access == access) {
                 unit = i;
                 break;
             } else if (texBinding.update < lowest) {
                 lowest = texBinding.update;
                 lowestIndex = i;
             }
-        }
+        } 
         if (unit == -1) {
             return lowestIndex;
         } 
@@ -2731,7 +2768,7 @@ public final class GLRenderer implements Renderer {
     @Override
     public int setImage(Texture tex, int layer, int level, Texture.Access access) { 
         int accessBits = access.getAccessBits();
-        int unit = getPreferredImageUnit(tex);
+        int unit = getPreferredImageUnit(tex, layer, level, accessBits);
         
         //make sure texture is created and updated
         Image image = tex.getImage();
@@ -2743,8 +2780,7 @@ public final class GLRenderer implements Renderer {
         ImageBinding img = context.boundImages[unit];
         if (img.image != image || img.layer != layer || img.level != level || img.access != accessBits) {
             int format = getFormat(image.getFormat());
-            gl4.glBindImageTexture(unit, image.getId(), level, layer < 0, layer < 0 ? 0 : layer, accessBits, format);
-            
+            gl4.glBindImageTexture(unit, image.getId(), level, layer < 0, layer < 0 ? 0 : layer, accessBits, format); 
             img.image = image;
             img.layer = layer;
             img.level = level;
@@ -3239,11 +3275,8 @@ public final class GLRenderer implements Renderer {
         setVertexAttrib(vb, null);
     }
     
-    public void drawTriangleArray(Mesh.Mode mode, int count, int vertCount) {
-        drawTriangleArray(null, 0L, 0, 0, mode, count, vertCount);
-    }
-
-    public void drawTriangleArray(DrawIndirectBuffer indirect, long offset, int stride, int indirectCount, Mesh.Mode mode, int count, int vertCount) {
+    public void drawTriangleArray(Mesh mesh, Mesh.Mode mode, int count, int vertCount) {
+        DrawIndirectBuffer indirect = mesh.getDrawIndirectBuffer();
         if (indirect != null) {
             if (indirect.getDrawMode() != DrawIndirectBuffer.DrawIndirectMode.Draw) {
                 throw new RendererException("only DrawIndirectBuffers in DrawIndirectMode.Draw are allowed");
@@ -3251,8 +3284,17 @@ public final class GLRenderer implements Renderer {
             if (!caps.contains(Caps.MultiDrawIndirect)) {
                 throw new RendererException("Hardware does not support MultiDrawIndirect");
             }
+            ParameterBuffer params = mesh.getDrawParameterBuffer();
+            if (params != null && !caps.contains(Caps.IndirectParameters)) {
+                throw new RendererException("Hardware does not support ParameterBuffers");
+            }
             setBuffer(null, indirect);  
-            gl4.glMultiDrawArraysIndirect(convertElementMode(mode), offset, indirectCount, stride);
+            if (params == null) {
+                gl4.glMultiDrawArraysIndirect(convertElementMode(mode), mesh.getDrawIndirectOffset(), mesh.getDrawIndirectCount(), mesh.getDrawIndirectStride());
+            } else { 
+                setBuffer(null, params);
+                glip.glMultiDrawArraysIndirectCount(convertElementMode(mode), mesh.getDrawIndirectOffset(), mesh.getDrawParameterOffset(), mesh.getDrawParameterMaxCount(), mesh.getDrawIndirectStride());
+            }
         } else {
             boolean useInstancing = count > 1 && caps.contains(Caps.MeshInstancing);
             if (useInstancing) {
@@ -3265,18 +3307,20 @@ public final class GLRenderer implements Renderer {
     }
     
     public void drawTriangleList(VertexBuffer indexBuf, Mesh mesh, int count) {
-        drawTriangleList(null, 0L, 0, 0, indexBuf, mesh, count);
-    }
-
-    public void drawTriangleList(DrawIndirectBuffer indirect, long offset, int stride, int indirectCount, VertexBuffer indexBuf, Mesh mesh, int count) {
         if (indexBuf.getBufferType() != VertexBuffer.Type.Index) {
             throw new IllegalArgumentException("Only index buffers are allowed as triangle lists.");
         } 
         
+        DrawIndirectBuffer indirect = mesh.getDrawIndirectBuffer();         
         if (indirect != null && indirect.getDrawMode() != DrawIndirectBuffer.DrawIndirectMode.DrawIndices) {
             throw new IllegalArgumentException("only DrawIndirectBuffers in DrawIndirectMode.DrawIndices are allowed");
         } else if (indirect != null && !caps.contains(Caps.MultiDrawIndirect)) {
             throw new RendererException("Hardware does not support MultiDrawIndirect");
+        }
+        
+        ParameterBuffer params = mesh.getDrawParameterBuffer();
+        if (indirect != null && params != null && !caps.contains(Caps.IndirectParameters)) {
+            throw new RendererException("Hardware does not support ParameterBuffers");
         }
 
         switch (indexBuf.getFormat()) {
@@ -3362,8 +3406,15 @@ public final class GLRenderer implements Renderer {
             }
         } else {
             if (indirect != null) {
-                setBuffer(null, indirect);  
-                gl4.glMultiDrawElementsIndirect(convertElementMode(mesh.getMode()), convertFormat(indexBuf.getFormat()), offset, indirectCount, stride);
+                setBuffer(null, indirect);   
+                if (params == null) {
+                    gl4.glMultiDrawElementsIndirect(convertElementMode(mesh.getMode()), convertFormat(indexBuf.getFormat()), 
+                            mesh.getDrawIndirectOffset(), mesh.getDrawIndirectCount(), mesh.getDrawIndirectStride());
+                } else { 
+                    setBuffer(null, params);
+                    glip.glMultiDrawElementsIndirectCount(convertElementMode(mesh.getMode()), convertFormat(indexBuf.getFormat()), 
+                            mesh.getDrawIndirectOffset(), mesh.getDrawParameterOffset(), mesh.getDrawParameterMaxCount(), mesh.getDrawIndirectStride()); 
+                }
             } else if (useInstancing) {
                 glext.glDrawElementsInstancedARB(convertElementMode(mesh.getMode()),
                         indexBuf.getData().limit(),
@@ -3489,7 +3540,7 @@ public final class GLRenderer implements Renderer {
                 | (vb.getNumComponents() << 1)  //maximum can be 16 = 4 bit
                 | (vb.isNormalized() ? 1 : 0);  //1 bit
         if (attribState.bufferId != bufferId
-                || attribState.hash != hash) {  
+                || attribState.hash != hash) {
             if (context.boundArrayVBO != bufferId) {
                 gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId); 
                 context.boundArrayVBO = bufferId;
@@ -3597,12 +3648,7 @@ public final class GLRenderer implements Renderer {
     private void renderMeshVertexArray(Mesh mesh, int lod, int count, VertexBuffer[] instanceData) {  
         count = Math.max(mesh.getInstanceCount(), count);
          
-        updateVertexArray(mesh, instanceData);  
-
-        DrawIndirectBuffer indirect = mesh.getDrawIndirectBuffer();  
-        long indirectOffset = mesh.getDrawIndirectOffset();
-        int indirectCount = mesh.getDrawIndirectCount();
-        int indirectStride = mesh.getDrawIndirectStride();
+        updateVertexArray(mesh, instanceData);   
  
         VertexBuffer indices;
         if (mesh.getNumLodLevels() > 0) {
@@ -3611,9 +3657,9 @@ public final class GLRenderer implements Renderer {
             indices = mesh.getBuffer(Type.Index);
         }
         if (indices != null) {
-            drawTriangleList(indirect, indirectOffset, indirectStride, indirectCount, indices, mesh, count);
+            drawTriangleList(indices, mesh, count);
         } else {
-            drawTriangleArray(indirect, indirectOffset, indirectStride, indirectCount, mesh.getMode(), count, mesh.getVertexCount());
+            drawTriangleArray(mesh, mesh.getMode(), count, mesh.getVertexCount());
         } 
     }
 
@@ -3662,7 +3708,7 @@ public final class GLRenderer implements Renderer {
         if (indices != null) {
             drawTriangleList(indices, mesh, count);
         } else {
-            drawTriangleArray(mesh.getMode(), count, mesh.getVertexCount());
+            drawTriangleArray(mesh, mesh.getMode(), count, mesh.getVertexCount());
         }
     }
 
@@ -3981,6 +4027,12 @@ public final class GLRenderer implements Renderer {
                     context.boundQboUnit = buffer.getId();
                 }
                 break;
+            case ParameterBuffer:
+                if (context.boundPboUnit != buffer.getId()) {
+                    gl3.glBindBuffer(GLIp.GL_PARAMETER_BUFFER, buffer.getId());
+                    context.boundPboUnit = buffer.getId();
+                }
+                break;
         }
     }
 
@@ -4105,6 +4157,7 @@ public final class GLRenderer implements Renderer {
             bindVertexArrayBuffer(bufferId);    
             gl.glBufferSubData(GL.GL_ARRAY_BUFFER, buffer.getPendingUpdateOffset(), buffer.getPendingUpdateBuffer());
             buffer.clearPendingUpdate();
+            //System.out.println("updated buffer with ID: "+buffer.getId()+" and size on GPU: "+buffer.getSizeOnGpu()+" in memory mode: "+buffer.getMemoryMode());
         }
         
         buffer.clearUpdateNeeded();
@@ -4117,6 +4170,7 @@ public final class GLRenderer implements Renderer {
             case DispatchIndirectBuffer: 
             case DrawIndirectBuffer: 
             case QueryBuffer:
+            case ParameterBuffer:
                 return -1; //no specific binding points for those
         }
         
@@ -4144,7 +4198,7 @@ public final class GLRenderer implements Renderer {
     }
 
     @Override
-    public int setBuffer(String name, TypedBuffer buffer) { 
+    public int setBuffer(String name, TypedBuffer buffer) {  
        if (buffer instanceof FieldBuffer) {
            FieldBuffer fieldBuffer = (FieldBuffer) buffer;
            if (fieldBuffer.isAutoLayout() && fieldBuffer.getLayout() == null) { //need to get layout for this buffer 

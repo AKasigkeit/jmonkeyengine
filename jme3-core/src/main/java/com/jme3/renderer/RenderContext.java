@@ -288,6 +288,8 @@ public class RenderContext {
     
     public int boundQboUnit;
     
+    public int boundPboUnit;
+    
     public int boundCopyReadUnit;
     
     public int boundCopyWriteUnit;
@@ -406,6 +408,7 @@ public class RenderContext {
         boundDispatchIboUnit = 0;
         boundDrawIboUnit = 0;
         boundQboUnit = 0;
+        boundPboUnit = 0;
         boundCopyReadUnit = 0;
         boundCopyWriteUnit = 0;
         stencilTest = false;

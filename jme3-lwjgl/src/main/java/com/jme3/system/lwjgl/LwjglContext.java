@@ -46,6 +46,7 @@ import com.jme3.renderer.lwjgl.LwjglGL;
 import com.jme3.renderer.lwjgl.LwjglGLExt;
 import com.jme3.renderer.lwjgl.LwjglGLFboEXT;
 import com.jme3.renderer.lwjgl.LwjglGLFboGL3;
+import com.jme3.renderer.lwjgl.LwjglGLIpEXT;
 import com.jme3.renderer.opengl.GL;
 import com.jme3.renderer.opengl.GL2;
 import com.jme3.renderer.opengl.GL3;
@@ -53,6 +54,7 @@ import com.jme3.renderer.opengl.GL4;
 import com.jme3.renderer.opengl.GLDebug;
 import com.jme3.renderer.opengl.GLExt;
 import com.jme3.renderer.opengl.GLFbo;
+import com.jme3.renderer.opengl.GLIp;
 import com.jme3.renderer.opengl.GLRenderer;
 import com.jme3.renderer.opengl.GLTiming;
 import com.jme3.renderer.opengl.GLTimingState;
@@ -262,6 +264,7 @@ public abstract class LwjglContext implements JmeContext {
             GL gl = new LwjglGL();
             GLExt glext = new LwjglGLExt();
             GLFbo glfbo;
+            GLIp glip = new LwjglGLIpEXT();
             
             if (GLContext.getCapabilities().OpenGL30) {
                 glfbo = new LwjglGLFboGL3();
@@ -273,19 +276,22 @@ public abstract class LwjglContext implements JmeContext {
                 gl = (GL) GLDebug.createProxy(gl, gl, GL.class, GL2.class, GL3.class, GL4.class);
                 glext = (GLExt) GLDebug.createProxy(gl, glext, GLExt.class);
                 glfbo = (GLFbo) GLDebug.createProxy(gl, glfbo, GLFbo.class);
+                glip = (GLIp) GLDebug.createProxy(gl, glip, GLIp.class);
             }
             if (settings.getBoolean("GraphicsTiming")) {
                 GLTimingState timingState = new GLTimingState();
                 gl = (GL) GLTiming.createGLTiming(gl, timingState, GL.class, GL2.class, GL3.class, GL4.class);
                 glext = (GLExt) GLTiming.createGLTiming(glext, timingState, GLExt.class);
                 glfbo = (GLFbo) GLTiming.createGLTiming(glfbo, timingState, GLFbo.class);
+                glip = (GLIp) GLTiming.createGLTiming(glip, timingState, GLIp.class);
             }
             if (settings.getBoolean("GraphicsTrace")) {
                 gl = (GL) GLTracer.createDesktopGlTracer(gl, GL.class, GL2.class, GL3.class, GL4.class);
                 glext = (GLExt) GLTracer.createDesktopGlTracer(glext, GLExt.class);
                 glfbo = (GLFbo) GLTracer.createDesktopGlTracer(glfbo, GLFbo.class);
+                glip = (GLIp) GLTracer.createDesktopGlTracer(glip, GLIp.class);
             }
-            renderer = new GLRenderer(gl, glext, glfbo);
+            renderer = new GLRenderer(gl, glext, glfbo, glip);
             renderer.initialize();
         } else {
             throw new UnsupportedOperationException("Unsupported renderer: " + settings.getRenderer());
