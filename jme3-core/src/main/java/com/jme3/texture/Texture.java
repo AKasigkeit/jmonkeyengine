@@ -36,6 +36,7 @@ import com.jme3.asset.AssetNotFoundException;
 import com.jme3.asset.CloneableSmartAsset;
 import com.jme3.asset.TextureKey;
 import com.jme3.export.*;
+import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.opengl.GL;
 import com.jme3.util.PlaceholderAssets;
 import java.io.IOException;
@@ -195,7 +196,23 @@ public abstract class Texture implements CloneableSmartAsset, Savable, Cloneable
 
     }
 
-    public enum WrapMode {
+    public enum WrapMode { 
+        /**
+         * coordinate will be clamped to the range [1/(2N), 1 - 1/(2N)] where N
+         * is the size of the texture in the direction of clamping. Falls back
+         * on Clamp if not supported.
+         */
+        EdgeClamp,
+        
+        /**
+         * Not supported by OpenGLES. Coordinates would be clamped to the range 
+         * [1/(2N), 1 - 1/(2N)] where N is the size of the texture in the 
+         * direction of clamping, but in case they fall outside this range, 
+         * instead of clamping the coordinate, the texture's border color is 
+         * returned. 
+         */ 
+        BorderClamp,
+        
         /**
          * Only the fractional portion of the coordinate is considered.
          */
@@ -209,13 +226,7 @@ public abstract class Texture implements CloneableSmartAsset, Savable, Cloneable
         MirroredRepeat,
         
         /**
-         * coordinate will be clamped to [0,1]
-         * 
-         * @deprecated Not supported by OpenGL 3
-         */
-        @Deprecated
-        Clamp,
-        /**
+         * Not supported by OpenGLES. 
          * mirrors and clamps the texture coordinate, where mirroring and
          * clamping a value f computes:
          * <code>mirrorClamp(f) = min(1, max(1/(2*N),
@@ -223,21 +234,16 @@ public abstract class Texture implements CloneableSmartAsset, Savable, Cloneable
          * is the size of the one-, two-, or three-dimensional texture image in
          * the direction of wrapping. (Introduced after OpenGL1.4) Falls back on
          * Clamp if not supported.
+         */
+        MirrorClamp,
+        
+        /**
+         * coordinate will be clamped to [0,1]
          * 
          * @deprecated Not supported by OpenGL 3
          */
         @Deprecated
-        MirrorClamp,
-        
-        /**
-         * coordinate will be clamped to the range [-1/(2N), 1 + 1/(2N)] where N
-         * is the size of the texture in the direction of clamping. Falls back
-         * on Clamp if not supported.
-         * 
-         * @deprecated Not supported by OpenGL 3 or OpenGL ES 2
-         */ 
-        @Deprecated
-        BorderClamp,
+        Clamp,
         /**
          * Wrap mode MIRROR_CLAMP_TO_BORDER_EXT mirrors and clamps to border the
          * texture coordinate, where mirroring and clamping to border a value f
@@ -251,12 +257,6 @@ public abstract class Texture implements CloneableSmartAsset, Savable, Cloneable
          */
         @Deprecated
         MirrorBorderClamp,
-        /**
-         * coordinate will be clamped to the range [1/(2N), 1 - 1/(2N)] where N
-         * is the size of the texture in the direction of clamping. Falls back
-         * on Clamp if not supported.
-         */
-        EdgeClamp,
         
         /**
          * mirrors and clamps to edge the texture coordinate, where mirroring
@@ -338,6 +338,7 @@ public abstract class Texture implements CloneableSmartAsset, Savable, Cloneable
 
     private MinFilter minificationFilter = MinFilter.BilinearNoMipMaps;
     private MagFilter magnificationFilter = MagFilter.Bilinear;
+    private ColorRGBA borderColor = ColorRGBA.Black;
     private ShadowCompareMode shadowCompareMode = ShadowCompareMode.Off;
     private int anisotropicFilter;
 
@@ -382,6 +383,34 @@ public abstract class Texture implements CloneableSmartAsset, Savable, Cloneable
         if (minificationFilter.usesMipMapLevels() && image != null && !image.isGeneratedMipmapsRequired() && !image.hasMipmaps()) {
             image.setNeedGeneratedMipmaps();
         }
+    }
+    
+    /**
+     * Returns the border color of this texture (it's the color that is returned
+     * when WrapMode.CLAMP_TO_BORDER is used and the uv falls outside the bounds
+     * of the texture)
+     * 
+     * @return the BorderColor of this texture
+     */
+    public ColorRGBA getBorderColor() {
+        return borderColor;
+    }
+    
+    /**
+     * Sets the border color of this texture (it's the color that is returned
+     * when WrapMode.CLAMP_TO_BORDER is used and the uv falls outside the bounds
+     * of the texture) To actually cause an update the provided instance cannot
+     * be the one that is returned by getBorderColor() (this is for efficiency
+     * and because the value should only be set once initially)
+     * 
+     * @param color the border color to set (cannot be null)
+     */
+    public void setBorderColor(ColorRGBA color) {
+        if (color == null) {
+            throw new IllegalArgumentException(
+                    "color can not be null.");
+        }
+        borderColor = color;
     }
 
     /**

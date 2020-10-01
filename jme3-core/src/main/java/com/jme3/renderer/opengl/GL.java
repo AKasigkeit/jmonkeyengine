@@ -69,6 +69,7 @@ public interface GL {
     public static final int GL_BLEND = 0xBE2;
     public static final int GL_BLUE = 0x1905;
     public static final int GL_BYTE = 0x1400;
+    public static final int GL_CLAMP_TO_BORDER = 33069;
     public static final int GL_CLAMP_TO_EDGE = 0x812F;
     public static final int GL_COLOR_BUFFER_BIT = 0x4000;
     public static final int GL_COMPILE_STATUS = 0x8B81;
@@ -186,6 +187,7 @@ public interface GL {
     public static final int GL_TEXTURE14 = 0x84CE;
     public static final int GL_TEXTURE15 = 0x84CF;
     public static final int GL_TEXTURE_2D = 0xDE1;
+    public static final int GL_TEXTURE_BORDER_COLOR = 4100;
     public static final int GL_TEXTURE_CUBE_MAP = 0x8513;
     public static final int GL_TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515;
     public static final int GL_TEXTURE_CUBE_MAP_NEGATIVE_X = 0x8516;
@@ -1126,6 +1128,17 @@ public interface GL {
      * @param param  the parameter value.
      */
     public void glTexParameterf(int target, int pname, float param);
+
+    /**
+     * <p><a target="_blank" href="http://docs.gl/gl4/glTexParameterf">Reference Page</a></p>
+     * <p>
+     * Floatbuffer version of {@link #glTexParameteri TexParameteri}.
+     *
+     * @param target the texture target.
+     * @param pname  the parameter to set.
+     * @param param  the parameter values.
+     */
+    public void glTexParameterfv(int target, int pname, FloatBuffer param);
 
     /**
      * <p><a target="_blank" href="http://docs.gl/gl4/glTexParameteri">Reference Page</a></p>

@@ -437,6 +437,11 @@ public class LwjglGL extends LwjglRender implements GL, GL2, GL3, GL4 {
     }
 
     @Override
+    public void glTexParameterfv(final int target, final int pname, final FloatBuffer param) { 
+        GL11.glTexParameterfv(target, pname, param);
+    }
+
+    @Override
     public void glTexParameteri(final int target, final int pname, final int param) {
         GL11.glTexParameteri(target, pname, param);
     }

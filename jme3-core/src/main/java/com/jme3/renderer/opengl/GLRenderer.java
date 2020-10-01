@@ -2377,16 +2377,33 @@ public final class GLRenderer implements Renderer {
     }
 
     private int convertWrapMode(Texture.WrapMode mode) {
+        //       edge_clamp     border_clamp     repeat  mirrored_repeat  mirror_clamp          mirror_border_clamp    mirror_edge_clamp     clamp
+        //GL2:   CLAMP_TO_EDGE, CLAMP_TO_BORDER, REPEAT, MIRRORED_REPEAT,  
+        //GL4:   CLAMP_TO_EDGE, CLAMP_TO_BORDER, REPEAT, MIRRORED_REPEAT, MIRROR_CLAMP_TO_EDGE       ext                    ext               ext
+        //GLES2: CLAMP_TO_EDGE                   REPEAT, MIRRORED_REPEAT
+        
         switch (mode) {
-            case BorderClamp:
             case Clamp:
+            case MirrorEdgeClamp:
             case EdgeClamp:
                 // Falldown intentional.
                 return GL.GL_CLAMP_TO_EDGE;
+            case MirrorBorderClamp:
+            case BorderClamp:
+                // Falldown intentional.
+                if (caps.contains(Caps.OpenGLES20)) {
+                    throw new RendererException("OpenGLES does not support WrapMode.BorderClamp");
+                }
+                return GL.GL_CLAMP_TO_BORDER;
             case Repeat:
                 return GL.GL_REPEAT;
             case MirroredRepeat:
                 return GL.GL_MIRRORED_REPEAT;
+            case MirrorClamp:
+                if (!caps.contains(Caps.OpenGL44)) {
+                    throw new RendererException("WrapMode.MirrorClamp requires OpenGL 4.4");
+                }
+                return GL4.GL_MIRROR_CLAMP_TO_EDGE;
             default:
                 throw new UnsupportedOperationException("Unknown wrap mode: " + mode);
         }
@@ -2419,6 +2436,14 @@ public final class GLRenderer implements Renderer {
             bindTextureAndUnit(target, image, unit);
             gl.glTexParameteri(target, GL.GL_TEXTURE_MIN_FILTER, convertMinFilter(tex.getMinFilter(), haveMips));
             curState.minFilter = tex.getMinFilter();
+        }
+        if (curState.color != tex.getBorderColor()) { 
+            bindTextureAndUnit(target, image, unit);
+            ColorRGBA c = tex.getBorderColor();
+            floatBuf16.clear();
+            floatBuf16.put(c.r).put(c.g).put(c.b).put(c.a).flip();
+            gl.glTexParameterfv(target, GL.GL_TEXTURE_BORDER_COLOR, floatBuf16);
+            curState.color = c;
         }
 
         int desiredAnisoFilter = tex.getAnisotropicFilter() == 0

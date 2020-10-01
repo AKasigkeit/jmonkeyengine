@@ -435,6 +435,11 @@ public class AndroidGL implements GL, GL2, GLES_30, GLExt, GLFbo {
     }
 
     @Override
+    public void glTexParameterfv(int target, int pname, FloatBuffer param) {
+        GLES20.glTexParameterfv(target, pname, param);
+    }
+
+    @Override
     public void glTexParameteri(int target, int pname, int param) {
         GLES20.glTexParameteri(target, pname, param);
     }

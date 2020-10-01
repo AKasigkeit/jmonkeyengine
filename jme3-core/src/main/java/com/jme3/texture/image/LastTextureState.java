@@ -31,6 +31,7 @@
  */
 package com.jme3.texture.image;
 
+import com.jme3.math.ColorRGBA;
 import com.jme3.renderer.Renderer;
 import com.jme3.texture.Texture;
 
@@ -45,6 +46,7 @@ public final class LastTextureState {
     public Texture.WrapMode sWrap, tWrap, rWrap;
     public Texture.MagFilter magFilter;
     public Texture.MinFilter minFilter;
+    public ColorRGBA color = ColorRGBA.Black;
     public int anisoFilter;
     public Texture.ShadowCompareMode shadowCompareMode;
     

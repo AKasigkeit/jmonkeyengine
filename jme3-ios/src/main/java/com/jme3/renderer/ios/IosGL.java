@@ -475,6 +475,12 @@ public class IosGL implements GL, GLExt, GLFbo {
         // TODO: fix me!!!
         // JmeIosGLES.glTexParameterf(target, pname, param);
     }
+    
+    @Override
+    public void glTexParameterfv(int target, int pname, FloatBuffer params) {
+        // TODO: fix me!!! even harder!!!
+        // JmeIosGLES.glTexParameterfv(target, pname, params);
+    }
 
     @Override
     public void glTexParameteri(int target, int pname, int param) {
