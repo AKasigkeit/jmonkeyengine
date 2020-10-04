@@ -216,6 +216,18 @@ public class ComputeShader {
     }
 
     /**
+     * Removes the specified define. Causes the shader to recompile in case the
+     * define was previously set.
+     *
+     * @param name name of the define to remove
+     */
+    public void removeDefine(String name) {
+        if (DEFINES.remove(name) != null) {
+            definesChanged = true;
+        }
+    }
+
+    /**
      * see @setTexture(String name, VarType type, Object value, Access access,
      * int level, int layer, boolean setDefines)<br>
      * called method mentioned above with level = 0 (level meaning mipmap level
