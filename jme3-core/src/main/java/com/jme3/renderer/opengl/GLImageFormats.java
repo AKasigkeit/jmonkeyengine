@@ -126,7 +126,7 @@ public final class GLImageFormats {
                 format(formatToGL, Format.Alpha8,           GL2.GL_ALPHA8,            GL.GL_ALPHA,           GL.GL_UNSIGNED_BYTE);
                 format(formatToGL, Format.Luminance8,       GL2.GL_LUMINANCE8,        GL.GL_LUMINANCE,       GL.GL_UNSIGNED_BYTE);
                 format(formatToGL, Format.Luminance8Alpha8, GL2.GL_LUMINANCE8_ALPHA8, GL.GL_LUMINANCE_ALPHA, GL.GL_UNSIGNED_BYTE);
-            }
+            } 
             format(formatToGL, Format.RGB8,             GL2.GL_RGB8,              GL.GL_RGB,             GL.GL_UNSIGNED_BYTE);
             format(formatToGL, Format.RGBA8,            GLExt.GL_RGBA8,           GL.GL_RGBA,            GL.GL_UNSIGNED_BYTE);
             format(formatToGL, Format.RGB565,           GL2.GL_RGB8,              GL.GL_RGB,             GL.GL_UNSIGNED_SHORT_5_6_5);

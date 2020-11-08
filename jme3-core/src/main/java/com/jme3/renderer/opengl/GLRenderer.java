@@ -76,6 +76,7 @@ import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import com.jme3.texture.Texture.ShadowCompareMode;
 import com.jme3.texture.Texture.WrapAxis;
+import com.jme3.texture.image.ColorSpace;
 import com.jme3.texture.image.LastTextureState;
 import com.jme3.util.BufferUtils;
 import com.jme3.util.ListMap;
@@ -1017,7 +1018,9 @@ public final class GLRenderer implements Renderer {
                 || context.backStencilDepthFailOperation != state.getBackStencilDepthFailOperation()
                 || context.backStencilDepthPassOperation != state.getBackStencilDepthPassOperation()
                 || context.frontStencilFunction != state.getFrontStencilFunction()
-                || context.backStencilFunction != state.getBackStencilFunction()) {
+                || context.backStencilFunction != state.getBackStencilFunction()
+                || context.stencilRef != state.getStencilRef()
+                || context.stencilMask != state.getStencilMask()) {
 
             context.frontStencilStencilFailOperation = state.getFrontStencilStencilFailOperation();   //terrible looking, I know
             context.frontStencilDepthFailOperation = state.getFrontStencilDepthFailOperation();
@@ -1027,6 +1030,8 @@ public final class GLRenderer implements Renderer {
             context.backStencilDepthPassOperation = state.getBackStencilDepthPassOperation();
             context.frontStencilFunction = state.getFrontStencilFunction();
             context.backStencilFunction = state.getBackStencilFunction();
+            context.stencilRef = state.getStencilRef();
+            context.stencilMask = state.getStencilMask();
 
             if (state.isStencilTest()) {
                 gl.glEnable(GL.GL_STENCIL_TEST);
@@ -1040,10 +1045,10 @@ public final class GLRenderer implements Renderer {
                         convertStencilOperation(state.getBackStencilDepthPassOperation()));
                 gl.glStencilFuncSeparate(GL.GL_FRONT,
                         convertTestFunction(state.getFrontStencilFunction()),
-                        0, Integer.MAX_VALUE);
+                        state.getStencilRef(), state.getStencilMask());
                 gl.glStencilFuncSeparate(GL.GL_BACK,
                         convertTestFunction(state.getBackStencilFunction()),
-                        0, Integer.MAX_VALUE);
+                        state.getStencilRef(), state.getStencilMask());
             } else {
                 gl.glDisable(GL.GL_STENCIL_TEST);
             }
@@ -2804,7 +2809,7 @@ public final class GLRenderer implements Renderer {
         //now bind it to that unit if any of the parameters differ from current state
         ImageBinding img = context.boundImages[unit];
         if (img.image != image || img.layer != layer || img.level != level || img.access != accessBits) {
-            int format = getFormat(image.getFormat());
+            int format = getFormat(image);
             gl4.glBindImageTexture(unit, image.getId(), level, layer < 0, layer < 0 ? 0 : layer, accessBits, format); 
             img.image = image;
             img.layer = layer;
@@ -2815,10 +2820,19 @@ public final class GLRenderer implements Renderer {
         return unit;
     }
 
-    protected int getFormat(Image.Format f) {
-        switch (f) {
-            case RGBA8:
-                return GL3.GL_RGBA8I;
+    protected int getFormat(Image image) {
+        boolean srgb = image.getColorSpace() == ColorSpace.sRGB && linearizeSrgbImages;
+        GLImageFormat format = texUtil.getImageFormatWithError(image.getFormat(), srgb); 
+        return format.internalFormat;
+        /*
+        switch (image.getFormat()) {
+            case Alpha8:
+                return GL3.GL_R8;
+            case Luminance8:
+                return GL3.GL_R8;
+            case Luminance8Alpha8:
+                return GL3.GL_RG8;
+             
             // R ints (signed and unsigned)
             case R8I:
                 return GL3.GL_R8I;
@@ -2876,8 +2890,9 @@ public final class GLRenderer implements Renderer {
                 return GL2.GL_RGB10_A2;
 
             default:
-                throw new IllegalArgumentException("unsupported image format: " + f);
+                throw new IllegalArgumentException("unsupported image format: " + image.getFormat());
         }
+        */
     }
     
     private int getPreferredTextureUnit(Texture tex) {
@@ -4185,6 +4200,20 @@ public final class GLRenderer implements Renderer {
             //System.out.println("updated buffer with ID: "+buffer.getId()+" and size on GPU: "+buffer.getSizeOnGpu()+" in memory mode: "+buffer.getMemoryMode());
         }
         
+        //last but not least copy content
+        if (buffer.hasPendingCopy()) {
+            int copySize = buffer.getCopySize();
+            if (caps.contains(Caps.OpenGL31)) { //can use copy buffers to not interfere with vertex array bindings
+                bindCopyReadBuffer(buffer.getCopyBuffer().getId());
+                bindCopyWriteBuffer(bufferId);
+                gl3.glCopyBufferSubData(GL3.GL_COPY_READ_BUFFER, GL3.GL_COPY_WRITE_BUFFER, buffer.getCopySrcOffset(), buffer.getCopyDstOffset(), copySize);
+            } else {
+                bindVertexElementBuffer(buffer.getCopyBuffer().getId());
+                gl3.glCopyBufferSubData(GL.GL_ELEMENT_ARRAY_BUFFER, GL.GL_ARRAY_BUFFER, buffer.getCopySrcOffset(), buffer.getCopyDstOffset(), copySize);
+            }
+            buffer.clearPendingCopy();
+        }
+        
         buffer.clearUpdateNeeded();
     }
     
@@ -4567,7 +4596,7 @@ public final class GLRenderer implements Renderer {
         if (!sync.isPlaced()) {
             throw new RendererException("provided SyncObject has not yet been placed");
         }
-        int res = gl3.glClientWaitSync(sync.getSyncRef(), GL3.GL_SYNC_FLUSH_COMMANDS_BIT, 1L);
+        int res = gl3.glClientWaitSync(sync.getSyncRef(), GL3.GL_SYNC_FLUSH_COMMANDS_BIT, 0L);
         return SyncObject.Signal.fromGlConstant(res);
     }
 

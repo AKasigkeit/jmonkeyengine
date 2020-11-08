@@ -89,7 +89,8 @@ public class TestDepthStencil extends SimpleApplication {
                 mat.getAdditionalRenderState().setStencil(enableStencil,
                     RenderState.StencilOperation.Keep, RenderState.StencilOperation.Keep, RenderState.StencilOperation.Keep,
                     RenderState.StencilOperation.Keep, RenderState.StencilOperation.Keep, RenderState.StencilOperation.Keep,
-                    RenderState.TestFunction.Never, RenderState.TestFunction.Never
+                    RenderState.TestFunction.Never, RenderState.TestFunction.Never,
+                    0, Integer.MAX_VALUE
                     //TestFunction.Always, TestFunction.Always
                 );
             }

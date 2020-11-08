@@ -480,6 +480,8 @@ public class RenderState implements Cloneable, Savable {
     StencilOperation backStencilDepthPassOperation = StencilOperation.Keep;
     TestFunction frontStencilFunction = TestFunction.Always;
     TestFunction backStencilFunction = TestFunction.Always;
+    int stencilRef = 0;
+    int stencilMask = Integer.MAX_VALUE;
     int cachedHashCode = -1;
     BlendFunc sfactorRGB = BlendFunc.One;
     BlendFunc dfactorRGB = BlendFunc.One;
@@ -500,6 +502,8 @@ public class RenderState implements Cloneable, Savable {
         oc.write(offsetFactor, "offsetFactor", 0);
         oc.write(offsetUnits, "offsetUnits", 0);
         oc.write(stencilTest, "stencilTest", false);
+        oc.write(stencilRef, "stencilRef", 0);
+        oc.write(stencilMask, "stencilMask", Integer.MAX_VALUE);
         oc.write(frontStencilStencilFailOperation, "frontStencilStencilFailOperation", StencilOperation.Keep);
         oc.write(frontStencilDepthFailOperation, "frontStencilDepthFailOperation", StencilOperation.Keep);
         oc.write(frontStencilDepthPassOperation, "frontStencilDepthPassOperation", StencilOperation.Keep);
@@ -543,6 +547,8 @@ public class RenderState implements Cloneable, Savable {
         offsetFactor = ic.readFloat("offsetFactor", 0);
         offsetUnits = ic.readFloat("offsetUnits", 0);
         stencilTest = ic.readBoolean("stencilTest", false);
+        stencilRef = ic.readInt("stencilRef", 0);
+        stencilMask = ic.readInt("stencilMask", Integer.MAX_VALUE);
         frontStencilStencilFailOperation = ic.readEnum("frontStencilStencilFailOperation", StencilOperation.class, StencilOperation.Keep);
         frontStencilDepthFailOperation = ic.readEnum("frontStencilDepthFailOperation", StencilOperation.class, StencilOperation.Keep);
         frontStencilDepthPassOperation = ic.readEnum("frontStencilDepthPassOperation", StencilOperation.class, StencilOperation.Keep);
@@ -693,6 +699,13 @@ public class RenderState implements Cloneable, Savable {
                 return false;
             }
             if (backStencilFunction != rs.backStencilFunction) {
+                return false;
+            }
+            
+            if (stencilRef != rs.stencilRef) {
+                return false;
+            }
+            if (stencilMask != rs.stencilMask) {
                 return false;
             }
         }
@@ -942,6 +955,8 @@ public class RenderState implements Cloneable, Savable {
      * a back-facing triangle passes the depth test.
      * @param _frontStencilFunction Set the test function for front-facing triangles.
      * @param _backStencilFunction Set the test function for back-facing triangles.
+     * @param _stencilRef Set the Reference value to use
+     * @param _stencilMask Set the mask to apply before check
      */
     public void setStencil(boolean enabled,
             StencilOperation _frontStencilStencilFailOperation,
@@ -951,7 +966,9 @@ public class RenderState implements Cloneable, Savable {
             StencilOperation _backStencilDepthFailOperation,
             StencilOperation _backStencilDepthPassOperation,
             TestFunction _frontStencilFunction,
-            TestFunction _backStencilFunction) {
+            TestFunction _backStencilFunction,
+            int _stencilRef,
+            int _stencilMask) {
 
         stencilTest = enabled;
         applyStencilTest = true;
@@ -963,8 +980,35 @@ public class RenderState implements Cloneable, Savable {
         this.backStencilDepthPassOperation = _backStencilDepthPassOperation;
         this.frontStencilFunction = _frontStencilFunction;
         this.backStencilFunction = _backStencilFunction;
+        this.stencilRef = _stencilRef;
+        this.stencilMask = _stencilMask;
         cachedHashCode = -1;
     }
+    
+    /**
+     * Enable stencil testing.
+     *
+     * <p>Stencil testing can be used to filter pixels according to the stencil
+     * buffer. Objects can be rendered with some stencil operation to manipulate
+     * the values in the stencil buffer, then, other objects can be rendered
+     * to test against the values written previously.
+     *
+     * @param enabled Set to true to enable stencil functionality. If false
+     * all other parameters are ignored. 
+     * @param failOP Operation to perform if depth or stencil tests fail
+     * @param successOP Operation to perform if both depth and stencil tests pass
+     * @param stencilFunction TestFunction to use for testing
+     * @param ref reference value to use
+     * @param mask mask to apply before testing
+     */
+    public void setStencil(boolean enabled, StencilOperation failOP, StencilOperation successOP, TestFunction stencilFunction, int ref, int mask) {
+        setStencil(enabled, 
+                failOP, failOP, successOP, 
+                failOP, failOP, successOP, 
+                stencilFunction, stencilFunction, ref, mask);
+    }
+    
+    
 
     /**
      * Set the depth conparison function to the given TestFunction 
@@ -1160,6 +1204,22 @@ public class RenderState implements Cloneable, Savable {
      */
     public TestFunction getBackStencilFunction() {
         return backStencilFunction;
+    }
+    
+    /**
+     * Returns the reference value used for stencil tests if enabled
+     * @return stencil reference value
+     */
+    public int getStencilRef() {
+        return stencilRef;
+    }
+    
+    /**
+     * Returns the mask used for stencil tests if enabled
+     * @return stencil mask
+     */
+    public int getStencilMask() {
+        return stencilMask;
     }
 
     /**
@@ -1434,6 +1494,8 @@ public class RenderState implements Cloneable, Savable {
             hash = 79 * hash + Float.floatToIntBits(this.offsetUnits);
             hash = 79 * hash + (this.offsetEnabled ? 1 : 0);
             hash = 79 * hash + (this.stencilTest ? 1 : 0);
+            hash = 79 * hash + this.stencilRef;
+            hash = 79 * hash + this.stencilMask;
             hash = 79 * hash + (this.frontStencilStencilFailOperation != null ? this.frontStencilStencilFailOperation.hashCode() : 0);
             hash = 79 * hash + (this.frontStencilDepthFailOperation != null ? this.frontStencilDepthFailOperation.hashCode() : 0);
             hash = 79 * hash + (this.frontStencilDepthPassOperation != null ? this.frontStencilDepthPassOperation.hashCode() : 0);
@@ -1554,6 +1616,9 @@ public class RenderState implements Cloneable, Savable {
 
             state.frontStencilFunction = additionalState.frontStencilFunction;
             state.backStencilFunction = additionalState.backStencilFunction;
+            
+            state.stencilRef = additionalState.stencilRef;
+            state.stencilMask = additionalState.stencilMask;
         } else {
             state.stencilTest = stencilTest;
 
@@ -1567,6 +1632,9 @@ public class RenderState implements Cloneable, Savable {
 
             state.frontStencilFunction = frontStencilFunction;
             state.backStencilFunction = backStencilFunction;
+            
+            state.stencilRef = stencilRef;
+            state.stencilMask = stencilMask;
         }
         if (additionalState.applyLineWidth) {
             state.lineWidth = additionalState.lineWidth;
@@ -1588,6 +1656,8 @@ public class RenderState implements Cloneable, Savable {
         offsetFactor = state.offsetFactor;
         offsetUnits = state.offsetUnits;
         stencilTest = state.stencilTest;
+        stencilRef = state.stencilRef;
+        stencilMask = state.stencilMask;
         frontStencilStencilFailOperation = state.frontStencilStencilFailOperation;
         frontStencilDepthFailOperation = state.frontStencilDepthFailOperation;
         frontStencilDepthPassOperation = state.frontStencilDepthPassOperation;

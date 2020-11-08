@@ -330,9 +330,12 @@ public class UntypedBuffer extends NativeObject {
     private ByteBuffer updateBuffer = null;
     //downloads
     private int downloadOffset = -1;
-    private int downloadPosition = -1;
-    private int downloadSize = -1;
     private ByteBuffer downloadBuffer = null;
+    //copies
+    private UntypedBuffer copyBuffer = null;
+    private int copySrcOffset = -1;
+    private int copyDstOffset = -1;
+    private int copySize = -1;
 
     private UntypedBuffer(MemoryMode mode, Renderer renderer, BufferDataUsage bdUsage, StorageFlag... stFlags) {
         if (mode == null) {
@@ -340,7 +343,7 @@ public class UntypedBuffer extends NativeObject {
         }
         if (bdUsage != null && (stFlags != null && stFlags.length > 0)) {
             throw new IllegalArgumentException("Can only specify BufferDataUsage or StorageFlags but not both");
-        } else if (bdUsage == null && stFlags == null) {
+        } else if (bdUsage == null && (stFlags == null || stFlags.length == 0)) {
             throw new IllegalArgumentException("Need to specify either BufferDataUsage or StorageFlags");
         }
 
@@ -425,7 +428,7 @@ public class UntypedBuffer extends NativeObject {
             throw new UnsupportedOperationException("This method can only be used with Gpu-Only buffers.");
         }
 
-        previousGpuSize = gpuSize;
+        previousGpuSize = gpuSize; //TODO probably only set if id != -1
         gpuSize = bytes;
         if (id != -1) {
             sizeChanged = true;
@@ -546,8 +549,6 @@ public class UntypedBuffer extends NativeObject {
 
         downloadBuffer = store;
         downloadOffset = offset;
-        downloadSize = store.limit() - store.position();
-        downloadPosition = store.position();
         if (isDirect()) {
             RENDERER.updateBuffer(this);
         }
@@ -560,11 +561,68 @@ public class UntypedBuffer extends NativeObject {
 
         downloadBuffer = cpuData;
         downloadOffset = offset;
-        downloadSize = length;
-        downloadPosition = offset;
         if (isDirect()) {
             RENDERER.updateBuffer(this);
         }
+    }
+
+    /**
+     * Copies the specified amount of bytes of the specified UntypedBuffer
+     * starting at the specified srcOffset into this buffer starting at the
+     * specified dstOffset. Only copies contents on the GPU
+     *
+     * @param dstOffset offset in bytes into this buffer to start writing to
+     * @param src src buffer to read data from
+     * @param srcOffset offset into src buffer to start reading data from
+     * @param bytes amount of bytes to copy
+     */
+    public void copyData(int dstOffset, UntypedBuffer src, int srcOffset, int bytes) {
+        copyBuffer = src;
+        copySrcOffset = srcOffset;
+        copyDstOffset = dstOffset;
+        copySize = bytes;
+
+        if (isDirect()) {
+            RENDERER.updateBuffer(this);
+        }
+    }
+
+    /**
+     * Returns true if this buffer has a copy operation pending.
+     *
+     * @return true if this buffer has a copy operation pending, false otherwise
+     */
+    public boolean hasPendingCopy() {
+        return copySrcOffset != -1;
+    }
+
+    /**
+     * Returns the Buffer to copy data from in case this buffer has a copy
+     * operation pending
+     *
+     * @return the buffer to copy data from in case one is set
+     */
+    public UntypedBuffer getCopyBuffer() {
+        return copyBuffer;
+    }
+    
+    public int getCopyDstOffset() {
+        return copyDstOffset;
+    }
+    
+    public int getCopySrcOffset() {
+        return copySrcOffset;
+    }
+    
+    public int getCopySize() {
+        return copySize;
+    }
+    
+    public void clearPendingCopy() {
+        copyBuffer = null;
+        copySrcOffset = -1;
+        copyDstOffset = -1;
+        copySize = -1;
     }
 
     /**
@@ -680,8 +738,6 @@ public class UntypedBuffer extends NativeObject {
      */
     public void clearPendingDownload() {
         downloadOffset = -1;
-        downloadPosition = -1;
-        downloadSize = -1;
         downloadBuffer = null;
     }
 

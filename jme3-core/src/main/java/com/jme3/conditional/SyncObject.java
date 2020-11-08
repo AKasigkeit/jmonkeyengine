@@ -96,7 +96,7 @@ public class SyncObject extends NativeObject {
 
     @Override
     public long getUniqueId() {
-        return ((long) OBJTYPE_SYNC << 32) | ((long) sync.hashCode());
+        return ((long) OBJTYPE_SYNC << 32) | ((long) sync.hashCode()); //not the best
     }
 
 }

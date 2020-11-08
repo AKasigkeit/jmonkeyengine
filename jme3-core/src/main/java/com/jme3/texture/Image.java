@@ -66,17 +66,11 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
          * 8-bit alpha
          */
         Alpha8(8),
-        
-        @Deprecated
-        Reserved1(0),
 
         /**
          * 8-bit grayscale/luminance.
          */
         Luminance8(8),
-        
-        @Deprecated
-        Reserved2(0),
         
         /**
          * half-precision floating-point grayscale/luminance.
@@ -95,10 +89,7 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
         /**
          * 8-bit luminance/grayscale and 8-bit alpha.
          */
-        Luminance8Alpha8(16),
-        
-        @Deprecated
-        Reserved3(0),
+        Luminance8Alpha8(16), 
         
         /**
          * half-precision floating-point grayscale/luminance and alpha.
@@ -106,12 +97,6 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
          * Requires {@link Caps#FloatTexture}.
          */
         Luminance16FAlpha16F(32,true),
-
-        @Deprecated
-        Reserved4(0),
-        
-        @Deprecated
-        Reserved5(0),
 
         /**
          * 8-bit blue, green, and red.
@@ -122,20 +107,11 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
          * 8-bit red, green, and blue.
          */
         RGB8(24),
-        
-        @Deprecated
-        Reserved6(0),
-        
-        @Deprecated
-        Reserved7(0),
-
+         
         /**
          * 5-bit red, 6-bit green, and 5-bit blue.
          */
-        RGB565(16),
-        
-        @Deprecated
-        Reserved8(0),
+        RGB565(16), 
         
         /**
          * 5-bit red, green, and blue with 1-bit alpha.
@@ -160,10 +136,7 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
         /**
          * 8-bit blue, green, red and alpha.
          */
-        BGRA8(32),
-        
-        @Deprecated
-        Reserved9(0),
+        BGRA8(32), 
 
         /**
          * S3TC compression DXT1. 
@@ -192,15 +165,7 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
         
         RGTC1(4,false,true, false),
         
-        SIGNED_RGTC1(4,false,true, false),
-        
-        /**
-         * Luminance-Alpha Texture Compression. 
-         * 
-         * @deprecated Not supported by OpenGL 3.0.
-         */
-        @Deprecated
-        Reserved10(0),
+        SIGNED_RGTC1(4,false,true, false), 
 
         /**
          * Arbitrary depth format. The precision is chosen by the video
@@ -290,19 +255,13 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
          * 
          * Requires {@link Caps#FloatTexture}.
          */
-        RGBA32F(128,true),
-
-        @Deprecated
-        Reserved11(0),
+        RGBA32F(128,true), 
         
         /**
          * 24-bit depth with 8-bit stencil. 
          * Check the cap {@link Caps#PackedDepthStencilBuffer}.
          */
-        Depth24Stencil8(32, true, false, false),
-        
-        @Deprecated
-        Reserved12(0),
+        Depth24Stencil8(32, true, false, false), 
         
         /**
          * Ericsson Texture Compression. Typically used on Android.
@@ -499,6 +458,37 @@ public class Image extends NativeObject implements Savable /*, Cloneable*/ {
          * 10-bit red, green, and blue with 2-bit alpha.
          */
         RGB10A2(32),
+        
+        
+        @Deprecated
+        Reserved1(0), 
+        @Deprecated
+        Reserved2(0),
+        @Deprecated
+        Reserved3(0),
+        @Deprecated
+        Reserved4(0), 
+        @Deprecated
+        Reserved5(0),
+        @Deprecated
+        Reserved6(0),
+        @Deprecated
+        Reserved7(0),
+        @Deprecated
+        Reserved8(0),
+        @Deprecated
+        Reserved9(0),
+        /**
+         * Luminance-Alpha Texture Compression. 
+         * 
+         * @deprecated Not supported by OpenGL 3.0.
+         */
+        @Deprecated
+        Reserved10(0),
+        @Deprecated
+        Reserved11(0),
+        @Deprecated
+        Reserved12(0),
         ;
 
         private int bpp;

@@ -296,8 +296,10 @@ public class ComputeShader {
             String upperName = name.toUpperCase();
             int w = value.getImage().getWidth();
             int h = value.getImage().getHeight();
+            int d = value.getImage().getDepth();
             setDefine(upperName + "_WIDTH", VarType.Int, w);
             setDefine(upperName + "_HEIGHT", VarType.Int, h);
+            setDefine(upperName + "_DEPTH", VarType.Int, d);
             if (w == h) { //if its a square, also apply RES define
                 setDefine(upperName + "_RES", VarType.Int, w);
             }

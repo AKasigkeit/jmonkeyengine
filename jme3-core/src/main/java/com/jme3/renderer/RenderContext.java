@@ -298,6 +298,8 @@ public class RenderContext {
      * Stencil Buffer state
      */
     public boolean stencilTest;
+    public int stencilRef = 0;
+    public int stencilMask = Integer.MAX_VALUE;
     public RenderState.StencilOperation frontStencilStencilFailOperation;
     public RenderState.StencilOperation frontStencilDepthFailOperation;
     public RenderState.StencilOperation frontStencilDepthPassOperation;
@@ -412,6 +414,8 @@ public class RenderContext {
         boundCopyReadUnit = 0;
         boundCopyWriteUnit = 0;
         stencilTest = false;
+        stencilRef = 0;
+        stencilMask = Integer.MAX_VALUE;
 
         frontStencilStencilFailOperation = RenderState.StencilOperation.Keep;
         frontStencilDepthFailOperation = RenderState.StencilOperation.Keep;
