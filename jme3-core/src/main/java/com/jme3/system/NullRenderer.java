@@ -151,6 +151,11 @@ public class NullRenderer implements Renderer {
     @Override
     public void copyFrameBuffer(FrameBuffer src, FrameBuffer dst, boolean copyDepth) {
     }
+
+    @Override
+    public void copyFrameBuffer(FrameBuffer src, FrameBuffer dst, boolean copyColor, boolean copyDepth) {
+    }
+    
     
     @Override
     public void setMainFrameBufferOverride(FrameBuffer fb) {
