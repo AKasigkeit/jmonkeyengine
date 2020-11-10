@@ -1,0 +1,16 @@
+MaterialDef CameraUniformBuffer {
+
+    MaterialParameters { 
+    }
+
+    Technique {
+        VertexShader   GLSL330: jme3test/mdi/MultiDrawIndirect.vert
+        FragmentShader GLSL330: jme3test/mdi/MultiDrawIndirect.frag
+
+        WorldParameters {
+            WorldMatrix;
+            CameraBuffer;
+        }
+    }
+
+}
