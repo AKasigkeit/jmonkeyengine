@@ -954,6 +954,46 @@ public class RenderState implements Cloneable, Savable {
      * @param _backStencilDepthPassOperation Set the operation to occur when
      * a back-facing triangle passes the depth test.
      * @param _frontStencilFunction Set the test function for front-facing triangles.
+     * @param _backStencilFunction Set the test function for back-facing triangles. 
+     */
+    public void setStencil(boolean enabled,
+            StencilOperation _frontStencilStencilFailOperation,
+            StencilOperation _frontStencilDepthFailOperation,
+            StencilOperation _frontStencilDepthPassOperation,
+            StencilOperation _backStencilStencilFailOperation,
+            StencilOperation _backStencilDepthFailOperation,
+            StencilOperation _backStencilDepthPassOperation,
+            TestFunction _frontStencilFunction,
+            TestFunction _backStencilFunction ) {
+
+        setStencil(enabled, _frontStencilStencilFailOperation, _frontStencilDepthFailOperation, _frontStencilDepthPassOperation, _backStencilStencilFailOperation, 
+                _backStencilDepthFailOperation, _backStencilDepthPassOperation, _frontStencilFunction, _backStencilFunction, 0, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Enable stencil testing.
+     *
+     * <p>Stencil testing can be used to filter pixels according to the stencil
+     * buffer. Objects can be rendered with some stencil operation to manipulate
+     * the values in the stencil buffer, then, other objects can be rendered
+     * to test against the values written previously.
+     *
+     * @param enabled Set to true to enable stencil functionality. If false
+     * all other parameters are ignored.
+     *
+     * @param _frontStencilStencilFailOperation Sets the operation to occur when
+     * a front-facing triangle fails the front stencil function.
+     * @param _frontStencilDepthFailOperation Sets the operation to occur when
+     * a front-facing triangle fails the depth test.
+     * @param _frontStencilDepthPassOperation Set the operation to occur when
+     * a front-facing triangle passes the depth test.
+     * @param _backStencilStencilFailOperation Set the operation to occur when
+     * a back-facing triangle fails the back stencil function.
+     * @param _backStencilDepthFailOperation Set the operation to occur when
+     * a back-facing triangle fails the depth test.
+     * @param _backStencilDepthPassOperation Set the operation to occur when
+     * a back-facing triangle passes the depth test.
+     * @param _frontStencilFunction Set the test function for front-facing triangles.
      * @param _backStencilFunction Set the test function for back-facing triangles.
      * @param _stencilRef Set the Reference value to use
      * @param _stencilMask Set the mask to apply before check
