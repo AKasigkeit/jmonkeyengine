@@ -7,9 +7,6 @@ package com.jme3.conditional;
 
 import com.jme3.buffer.QueryBuffer;
 import com.jme3.renderer.Renderer;
-import com.jme3.renderer.opengl.GL;
-import com.jme3.renderer.opengl.GL3;
-import com.jme3.renderer.opengl.GL4;
 import com.jme3.util.NativeObject;
 
 /**
@@ -25,47 +22,37 @@ public class GpuQuery extends NativeObject {
          * Queries the amount of samples that passed depth test. Available on
          * all platforms that run jme3.
          */
-        SAMPLES_PASSED(GL.GL_SAMPLES_PASSED),
+        SAMPLES_PASSED,
         /**
          * Queries if any of the samples passed depth test. REQUIRES OpenGL 3.3
          */
-        ANY_SAMPLES_PASSED(GL3.GL_ANY_SAMPLES_PASSED),
+        ANY_SAMPLES_PASSED,
         /**
          * Basically same as ANY_SAMPLES_PASSED, only the implementation might
          * be less accurate, but faster, resulting in more false positives.
          * REQUIRES OpenGL 4.3
          */
-        ANY_SAMPLES_PASSED_CONSERVATIVE(GL4.GL_ANY_SAMPLES_PASSED_CONSERVATIVE),
+        ANY_SAMPLES_PASSED_CONSERVATIVE,
         /**
          * Queries the amount of primitives written to a GeometryShader (stream
          * 0 if no GeometryShader is present). REQUIRES OpenGL 3.0
          */
-        PRIMITIVES_GENERATED(GL3.GL_PRIMITIVES_GENERATED),
+        PRIMITIVES_GENERATED,
         /**
          * Queries the amount of primitives written by a GeometryShader to a
          * TransformFeedback object (stream 0 if no GeometryShader is present).
          * Requires OpenGL 3.0 <b>(CURRENTLY TRANSFORM FEEDBACK IS NOT
          * SUPPORTED)</b>
          */
-        TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN(GL3.GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN),
+        TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN,
         /**
          * Queries the time that elapsed on the GPU. REQUIRES OpenGL 3.3
          */
-        TIME_ELAPSED(GL3.GL_TIME_ELAPSED),
+        TIME_ELAPSED,
         /**
          * Queries the current timestamp on the GPU. REQUIRES OpenGL 3.3
          */
-        TIMESTAMP(GL3.GL_TIMESTAMP);
-
-        private final int glvalue;
-
-        private Type(int val) {
-            glvalue = val;
-        }
-
-        public int getGLValue() {
-            return glvalue;
-        }
+        TIMESTAMP;
     }
 
     private final Type TYPE;

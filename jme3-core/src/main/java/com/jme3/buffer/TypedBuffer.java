@@ -6,9 +6,6 @@
 package com.jme3.buffer;
 
 import com.jme3.renderer.Caps;
-import com.jme3.renderer.opengl.GL3;
-import com.jme3.renderer.opengl.GL4;
-import com.jme3.renderer.opengl.GLIp;
 import com.jme3.util.BufferUtils;
 import java.nio.ByteBuffer;
 
@@ -25,7 +22,7 @@ public class TypedBuffer {
          * them once. Limited in size to 16KB. To share buffer between shaders,
          * use Layout.std140 or Layout.shared. Does not support Layout.std430
          */
-        UniformBuffer(Caps.UniformBufferObject, GL3.GL_UNIFORM_BUFFER),
+        UniformBuffer(Caps.UniformBufferObject),
         /**
          * Shader Storage Buffer Object (SSBO). Can be used for same purposes as
          * UniformBufferObjects. Have a guaranteed minimum size of 128MB (MB as
@@ -33,12 +30,12 @@ public class TypedBuffer {
          * all layouts including Layout.std430 which is more memory efficient in
          * some cases which might somewhat counter the slower memory access.
          */
-        ShaderStorageBuffer(Caps.ShaderStorageBufferObject, GL4.GL_SHADER_STORAGE_BUFFER),
+        ShaderStorageBuffer(Caps.ShaderStorageBufferObject),
         /**
          * Atomic Counter Buffer Object. Can be used in shaders to have atomic
          * counters obviously. Each counter is an unsigned 32 bit int.
          */
-        AtomicCounterBuffer(Caps.OpenGL44, GL4.GL_ATOMIC_COUNTER_BUFFER),
+        AtomicCounterBuffer(Caps.OpenGL44),
         /**
          * Dispatch Indirect Buffer. Can be used to hold work group counts of
          * compute shader dispatches. Might improve performance over using
@@ -47,40 +44,34 @@ public class TypedBuffer {
          * termination in case eg the specified sizes in the buffer exceed the
          * implementations maximum
          */
-        DispatchIndirectBuffer(Caps.OpenGL44, GL4.GL_DISPATCH_INDIRECT_BUFFER),
+        DispatchIndirectBuffer(Caps.OpenGL44),
         /**
          * Draw Indirect Buffer. Can be used to send one or more draw commands
          * to the gpu at once. Look into documentation of DrawIndirectBuffer for
          * more details explanation.1
          */
-        DrawIndirectBuffer(Caps.MultiDrawIndirect, GL4.GL_DRAW_INDIRECT_BUFFER),
+        DrawIndirectBuffer(Caps.MultiDrawIndirect),
         /**
          * Query Buffer. Can be used to store QueryObject results so they dont
          * have to be read back to the CPU. Can then be used in shaders to use
          * lower tessellation / cheaper lighting / otherwise less performance
          * heavy computations if the fragments drawn fall below some threshold.
          */
-        QueryBuffer(Caps.QueryBuffer, GL4.GL_QUERY_BUFFER),
+        QueryBuffer(Caps.QueryBuffer),
         /**
          * Parameter Buffer. Can be used to store draw command parameters like
          * 'count' for multi draw indirect calls
          */
-        ParameterBuffer(Caps.IndirectParameters, GLIp.GL_PARAMETER_BUFFER);
+        ParameterBuffer(Caps.IndirectParameters);
 
         private final Caps CAPS;
-        private final int GL_CONST;
 
-        private Type(Caps caps, int con) {
-            CAPS = caps;
-            GL_CONST = con;
+        private Type(Caps caps) {
+            CAPS = caps; 
         }
 
         public Caps getCaps() {
             return CAPS;
-        }
-
-        public int getGlConstant() {
-            return GL_CONST;
         }
     }
 

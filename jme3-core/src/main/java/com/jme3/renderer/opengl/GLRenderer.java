@@ -4490,7 +4490,7 @@ public final class GLRenderer implements Renderer {
             throw new IllegalArgumentException("provided query is already running");
         }
         
-        gl.glBeginQuery(query.getType().getGLValue(), id);
+        gl.glBeginQuery(convertQuery(query.getType()), id);
         query.setStarted(this); 
     }
     
@@ -4501,7 +4501,7 @@ public final class GLRenderer implements Renderer {
             throw new IllegalArgumentException("provided query has is not running and thus cannot be stopped");
         }
         
-        gl.glEndQuery(query.getType().getGLValue());
+        gl.glEndQuery(convertQuery(query.getType()));
         query.setStopped();
     }
 
@@ -4634,5 +4634,26 @@ public final class GLRenderer implements Renderer {
                 return SyncObject.Signal.WaitFailed;
         }
         throw new IllegalArgumentException("unknown constant for signal: " + cons);
+    }
+     
+    private int convertQuery(GpuQuery.Type type) {
+        switch (type) {
+            case SAMPLES_PASSED:
+                return GL.GL_SAMPLES_PASSED;
+            case ANY_SAMPLES_PASSED: 
+                return  GL3.GL_ANY_SAMPLES_PASSED;
+            case ANY_SAMPLES_PASSED_CONSERVATIVE: 
+                return GL4.GL_ANY_SAMPLES_PASSED_CONSERVATIVE;
+            case PRIMITIVES_GENERATED: 
+                return GL3.GL_PRIMITIVES_GENERATED;
+            case TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN: 
+                return GL3.GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN;
+            case TIME_ELAPSED: 
+                return GL3.GL_TIME_ELAPSED;
+            case TIMESTAMP: 
+                return GL3.GL_TIMESTAMP;
+            default:
+                throw new IllegalArgumentException("unknown query type: "+type);
+        }
     }
 }
