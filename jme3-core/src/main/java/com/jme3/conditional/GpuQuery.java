@@ -93,7 +93,7 @@ public class GpuQuery extends NativeObject {
      * Starts this GpuQuery. Can only be used if a renderer was provided in the
      * constructor
      */
-    public void startQuery() {
+    public void start() {
         if (renderer == null) {
             throw new UnsupportedOperationException("using this method is only supported if you provide a renderer in the constructor");
         }
@@ -103,7 +103,7 @@ public class GpuQuery extends NativeObject {
     /**
      * Stops this GpuQuery.
      */
-    public void stopQuery() {
+    public void stop() {
         renderer.stopQuery(this);
     }
 
