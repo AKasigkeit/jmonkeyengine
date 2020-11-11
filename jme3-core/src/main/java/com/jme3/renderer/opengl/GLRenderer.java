@@ -4610,7 +4610,7 @@ public final class GLRenderer implements Renderer {
             throw new RendererException("provided SyncObject has not yet been placed");
         }
         int res = gl3.glClientWaitSync(sync.getSyncRef(), GL3.GL_SYNC_FLUSH_COMMANDS_BIT, 0L);
-        return SyncObject.Signal.fromGlConstant(res);
+        return convertSignal(res);
     }
 
     @Override
@@ -4620,5 +4620,19 @@ public final class GLRenderer implements Renderer {
             sync.setSyncRef(null);
             sync.setPlaced(false);
         } 
+    }
+    
+    private SyncObject.Signal convertSignal(int cons) {
+        switch (cons) {
+            case GL3.GL_ALREADY_SIGNALED:
+                return SyncObject.Signal.AlreadySignaled;
+            case GL3.GL_CONDITION_SATISFIED:
+                return SyncObject.Signal.ConditionSatisfied;
+            case GL3.GL_TIMEOUT_EXPIRED:
+                return SyncObject.Signal.TimeoutExpired;
+            case GL3.GL_WAIT_FAILED:
+                return SyncObject.Signal.WaitFailed;
+        }
+        throw new IllegalArgumentException("unknown constant for signal: " + cons);
     }
 }

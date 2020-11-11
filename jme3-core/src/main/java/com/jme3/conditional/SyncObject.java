@@ -6,7 +6,6 @@
 package com.jme3.conditional;
 
 import com.jme3.renderer.Renderer;
-import com.jme3.renderer.opengl.GL3;
 import com.jme3.util.NativeObject;
 
 /**
@@ -16,34 +15,10 @@ import com.jme3.util.NativeObject;
 public class SyncObject extends NativeObject {
 
     public static enum Signal {
-        AlreadySignaled(GL3.GL_ALREADY_SIGNALED),
-        TimeoutExpired(GL3.GL_TIMEOUT_EXPIRED),
-        ConditionSatisfied(GL3.GL_CONDITION_SATISFIED),
-        WaitFailed(GL3.GL_WAIT_FAILED);
-
-        private final int CONST;
-
-        private Signal(int cons) {
-            CONST = cons;
-        }
-
-        public int getGlConstant() {
-            return CONST;
-        }
-        
-        public static Signal fromGlConstant(int cons) {
-            switch (cons) {
-                case GL3.GL_ALREADY_SIGNALED:
-                    return Signal.AlreadySignaled;
-                case GL3.GL_CONDITION_SATISFIED:
-                    return Signal.ConditionSatisfied;
-                case GL3.GL_TIMEOUT_EXPIRED:
-                    return Signal.TimeoutExpired;
-                case GL3.GL_WAIT_FAILED:
-                    return Signal.WaitFailed;
-            }
-            throw new IllegalArgumentException("unknown constant for signal: "+cons);
-        }
+        AlreadySignaled,
+        TimeoutExpired,
+        ConditionSatisfied,
+        WaitFailed; 
     }
 
     private Object sync = null;
