@@ -4508,7 +4508,7 @@ public final class GLRenderer implements Renderer {
         }
         
         gl.glBeginQuery(convertQuery(query.getType()), id);
-        query.setStarted(this); 
+        query.setStarted(); 
     }
     
     @Override
@@ -4655,19 +4655,19 @@ public final class GLRenderer implements Renderer {
      
     private int convertQuery(GpuQuery.Type type) {
         switch (type) {
-            case SAMPLES_PASSED:
+            case SamplesPassed:
                 return GL.GL_SAMPLES_PASSED;
-            case ANY_SAMPLES_PASSED: 
+            case AnySamplesPassed: 
                 return  GL3.GL_ANY_SAMPLES_PASSED;
-            case ANY_SAMPLES_PASSED_CONSERVATIVE: 
+            case AnySamplesPassedConservative: 
                 return GL4.GL_ANY_SAMPLES_PASSED_CONSERVATIVE;
-            case PRIMITIVES_GENERATED: 
+            case PrimitivesGenerated: 
                 return GL3.GL_PRIMITIVES_GENERATED;
-            case TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN: 
+            case TransformFeedbackPrimitivesWritten: 
                 return GL3.GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN;
-            case TIME_ELAPSED: 
+            case TimeElapsed: 
                 return GL3.GL_TIME_ELAPSED;
-            case TIMESTAMP: 
+            case Timestamp: 
                 return GL3.GL_TIMESTAMP;
             default:
                 throw new IllegalArgumentException("unknown query type: "+type);

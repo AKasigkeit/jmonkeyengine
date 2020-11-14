@@ -22,76 +22,72 @@ public class GpuQuery extends NativeObject {
          * Queries the amount of samples that passed depth test. Available on
          * all platforms that run jme3.
          */
-        SAMPLES_PASSED,
+        SamplesPassed,
         /**
          * Queries if any of the samples passed depth test. REQUIRES OpenGL 3.3
          */
-        ANY_SAMPLES_PASSED,
+        AnySamplesPassed,
         /**
          * Basically same as ANY_SAMPLES_PASSED, only the implementation might
          * be less accurate, but faster, resulting in more false positives.
          * REQUIRES OpenGL 4.3
          */
-        ANY_SAMPLES_PASSED_CONSERVATIVE,
+        AnySamplesPassedConservative,
         /**
          * Queries the amount of primitives written to a GeometryShader (stream
          * 0 if no GeometryShader is present). REQUIRES OpenGL 3.0
          */
-        PRIMITIVES_GENERATED,
+        PrimitivesGenerated,
         /**
          * Queries the amount of primitives written by a GeometryShader to a
          * TransformFeedback object (stream 0 if no GeometryShader is present).
          * Requires OpenGL 3.0 <b>(CURRENTLY TRANSFORM FEEDBACK IS NOT
          * SUPPORTED)</b>
          */
-        TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN,
+        TransformFeedbackPrimitivesWritten,
         /**
          * Queries the time that elapsed on the GPU. REQUIRES OpenGL 3.3
          */
-        TIME_ELAPSED,
+        TimeElapsed,
         /**
          * Queries the current timestamp on the GPU. REQUIRES OpenGL 3.3
          */
-        TIMESTAMP;
+        Timestamp;
     }
 
     private final Type TYPE;
-    private Renderer renderer = null;
+    private final Renderer RENDERER;
     private boolean running = false;
 
     private long result = NO_RESULT;
-    private boolean resultAvailable = false;
-
-    public GpuQuery(Type type) {
-        this(type, null);
-    }
+    private boolean resultAvailable = false; 
 
     public GpuQuery(Type type, Renderer renderer) {
+        if (type == null || renderer == null) {
+            throw new IllegalArgumentException("none of the arguments can be null");
+        }
         TYPE = type;
-        this.renderer = renderer;
+        RENDERER = renderer;
     }
 
-    private GpuQuery(int id, Type type) {
+    private GpuQuery(int id, Type type, Renderer renderer) {
         super(id);
         TYPE = type;
+        RENDERER = renderer;
     }
 
     /**
-     * Starts this GpuQuery. Can only be used if a renderer was provided in the
-     * constructor
+     * Starts this GpuQuery.
      */
     public void start() {
-        if (renderer == null) {
-            throw new UnsupportedOperationException("using this method is only supported if you provide a renderer in the constructor");
-        }
-        renderer.startQuery(this);
+        RENDERER.startQuery(this);
     }
 
     /**
      * Stops this GpuQuery.
      */
     public void stop() {
-        renderer.stopQuery(this);
+        RENDERER.stopQuery(this);
     }
 
     /**
@@ -110,7 +106,7 @@ public class GpuQuery extends NativeObject {
         if (resultAvailable || result != NO_RESULT) {
             return true;
         }
-        resultAvailable |= renderer.isQueryResultAvailable(this);
+        resultAvailable |= RENDERER.isQueryResultAvailable(this);
         return resultAvailable;
     }
 
@@ -124,7 +120,7 @@ public class GpuQuery extends NativeObject {
         if (result != NO_RESULT) {
             return result;
         }
-        result = renderer.getQueryResult(this);
+        result = RENDERER.getQueryResult(this);
         return result;
     }
 
@@ -137,11 +133,8 @@ public class GpuQuery extends NativeObject {
      * @param buffer the buffer to store the results availability in
      * @param offset the offset in bytes to store it at
      */
-    public void storeResultAvailability(QueryBuffer buffer, int offset) {
-        if (renderer == null) {
-            throw new UnsupportedOperationException("query has not yet been started");
-        }
-        renderer.getQueryResultAvailability(buffer, this, offset);
+    public void storeResultAvailability(QueryBuffer buffer, int offset) { 
+        RENDERER.getQueryResultAvailability(buffer, this, offset);
     }
 
     /**
@@ -158,11 +151,8 @@ public class GpuQuery extends NativeObject {
      * @param wait true to wait for the results avaiabilty, false to not change
      * the buffer in case the result is not available
      */
-    public void storeResult(QueryBuffer buffer, int offset, boolean bits64, boolean wait) {
-        if (renderer == null) {
-            throw new UnsupportedOperationException("query has not yet been started");
-        }
-        renderer.getQueryResult(buffer, this, offset, bits64, wait);
+    public void storeResult(QueryBuffer buffer, int offset, boolean bits64, boolean wait) { 
+        RENDERER.getQueryResult(buffer, this, offset, bits64, wait);
     }
 
     /**
@@ -195,11 +185,9 @@ public class GpuQuery extends NativeObject {
 
     /**
      * USED INTERNALLY. Called by the renderer upon starting a query
-     *
-     * @param renderer
+     * 
      */
-    public void setStarted(Renderer renderer) {
-        this.renderer = renderer;
+    public void setStarted() { 
         this.running = true;
     }
 
@@ -228,8 +216,7 @@ public class GpuQuery extends NativeObject {
 
     @Override
     public NativeObject createDestructableClone() {
-        GpuQuery c = new GpuQuery(getId(), TYPE);
-        c.renderer = renderer;
+        GpuQuery c = new GpuQuery(getId(), TYPE, RENDERER); 
         return c;
     }
 
