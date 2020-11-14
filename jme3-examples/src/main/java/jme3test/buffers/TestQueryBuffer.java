@@ -76,7 +76,7 @@ public class TestQueryBuffer extends SimpleApplication {
             mat.setInt("QueryIndex", i);
             geo.setMaterial(mat);
 
-            queries.put(i, new GpuQuery(GpuQuery.Type.SAMPLES_PASSED, renderer));
+            queries.put(i, new GpuQuery(GpuQuery.Type.SamplesPassed, renderer));
             rootNode.attachChild(geo);
         }
         viewPort.addProcessor(new QuerySceneProcessor());
