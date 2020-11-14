@@ -490,7 +490,22 @@ public enum Caps {
     /**
      * Implementation supports sourcing draw command parameters from GL_PARAMETER_BUFFER
      */
-    IndirectParameters,
+    ParameterBuffer,
+    
+    /**
+     * Implementation supports AtomicCounterBuffers
+     */
+    AtomicCounterBuffer,
+    
+    /**
+     * Implementation supports sourcing DispatchCommands from DispatchIndirectBuffers
+     */
+    DispatchIndirectBuffer,
+    
+    /**
+     * Implementation supports sourcing DrawCommands from DrawIndirectBuffers
+     */
+    DrawIndirectBuffer,
     ;
 
     /**

@@ -35,7 +35,7 @@ public class TypedBuffer {
          * Atomic Counter Buffer Object. Can be used in shaders to have atomic
          * counters obviously. Each counter is an unsigned 32 bit int.
          */
-        AtomicCounterBuffer(Caps.OpenGL44),
+        AtomicCounterBuffer(Caps.AtomicCounterBuffer),
         /**
          * Dispatch Indirect Buffer. Can be used to hold work group counts of
          * compute shader dispatches. Might improve performance over using
@@ -44,13 +44,13 @@ public class TypedBuffer {
          * termination in case eg the specified sizes in the buffer exceed the
          * implementations maximum
          */
-        DispatchIndirectBuffer(Caps.OpenGL44),
+        DispatchIndirectBuffer(Caps.DispatchIndirectBuffer),
         /**
          * Draw Indirect Buffer. Can be used to send one or more draw commands
          * to the gpu at once. Look into documentation of DrawIndirectBuffer for
          * more details explanation.1
          */
-        DrawIndirectBuffer(Caps.MultiDrawIndirect),
+        DrawIndirectBuffer(Caps.DrawIndirectBuffer),
         /**
          * Query Buffer. Can be used to store QueryObject results so they dont
          * have to be read back to the CPU. Can then be used in shaders to use
@@ -62,7 +62,7 @@ public class TypedBuffer {
          * Parameter Buffer. Can be used to store draw command parameters like
          * 'count' for multi draw indirect calls
          */
-        ParameterBuffer(Caps.IndirectParameters);
+        ParameterBuffer(Caps.ParameterBuffer);
 
         private final Caps CAPS;
 

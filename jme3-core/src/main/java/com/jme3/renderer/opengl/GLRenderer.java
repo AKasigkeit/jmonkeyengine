@@ -551,6 +551,7 @@ public final class GLRenderer implements Renderer {
         
         if (hasExtension("GL_ARB_compute_shader") || caps.contains(Caps.OpenGL43)) {
             caps.add(Caps.ComputeShader);
+            caps.add(Caps.DispatchIndirectBuffer);
             limits.put(Limits.ComputeShaderMaxImageUnits, getInteger(GL4.GL_MAX_COMPUTE_IMAGE_UNIFORMS)); 
             limits.put(Limits.ComputeShaderMaxTextureUnits, getInteger(GL4.GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS));
             limits.put(Limits.ComputeShaderMaxUniformBlocks, getInteger(GL4.GL_MAX_COMPUTE_UNIFORM_BLOCKS));
@@ -574,9 +575,14 @@ public final class GLRenderer implements Renderer {
             caps.add(Caps.SyncObjects);
         }
         
+        
         if (hasExtension("GL_ARB_multi_draw_indirect") || caps.contains(Caps.OpenGL43)) {
             caps.add(Caps.MultiDrawIndirect);
+            caps.add(Caps.DrawIndirectBuffer); //can be supported on lower hardware, but only MULTIdrawindirect is used
         }
+        //if (hasExtension("GL_ARB_draw_indirect") || caps.contains(Caps.OpenGL40)) {
+        //    caps.add(Caps.DrawIndirectBuffer); //use this in case the engine uses glDraw(Arrays/Elements)Indirect
+        //}
         
         if (hasExtension("GL_ARB_map_buffer_range") || caps.contains(Caps.OpenGL30)) {
             caps.add(Caps.MapBuffer);
@@ -592,10 +598,11 @@ public final class GLRenderer implements Renderer {
         }  
         
         if (hasExtension("GL_ARB_indirect_parameters") || caps.contains(Caps.OpenGL46)) {
-            caps.add(Caps.IndirectParameters);
+            caps.add(Caps.ParameterBuffer);
         }
         
         if (caps.contains(Caps.OpenGL42)) {
+            caps.add(Caps.AtomicCounterBuffer);
             limits.put(Limits.AtomicCounterBufferMaxBindings, getInteger(GL4.GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS));
         }
 
@@ -3338,7 +3345,7 @@ public final class GLRenderer implements Renderer {
                 throw new RendererException("Hardware does not support MultiDrawIndirect");
             }
             ParameterBuffer params = mesh.getDrawParameterBuffer();
-            if (params != null && !caps.contains(Caps.IndirectParameters)) {
+            if (params != null && !caps.contains(Caps.ParameterBuffer)) {
                 throw new RendererException("Hardware does not support ParameterBuffers");
             }
             setBuffer(null, indirect);  
@@ -3372,7 +3379,7 @@ public final class GLRenderer implements Renderer {
         }
         
         ParameterBuffer params = mesh.getDrawParameterBuffer();
-        if (indirect != null && params != null && !caps.contains(Caps.IndirectParameters)) {
+        if (indirect != null && params != null && !caps.contains(Caps.ParameterBuffer)) {
             throw new RendererException("Hardware does not support ParameterBuffers");
         }
 
@@ -4266,6 +4273,10 @@ public final class GLRenderer implements Renderer {
 
     @Override
     public int setBuffer(String name, TypedBuffer buffer) {  
+        if (!caps.contains(buffer.getType().getCaps())) {
+            throw new RendererException("Hardware doesn't support buffers of type: "+buffer.getType());
+        }
+        
        if (buffer instanceof FieldBuffer) {
            FieldBuffer fieldBuffer = (FieldBuffer) buffer;
            if (fieldBuffer.isAutoLayout() && fieldBuffer.getLayout() == null) { //need to get layout for this buffer 
@@ -4320,6 +4331,9 @@ public final class GLRenderer implements Renderer {
             throw new RendererException("cannot query openGL for shader that has not yet been created.");
         }
         HashMap<String, BlockLayout> ubLayouts = new HashMap<>(); 
+        if (!caps.contains(Caps.UniformBufferObject)) {
+            return ubLayouts;
+        }
          
         gl2.glGetProgram(id, GL3.GL_ACTIVE_UNIFORM_BLOCKS, intBuf1);
         int numResources = intBuf1.get(0); 
@@ -4400,6 +4414,9 @@ public final class GLRenderer implements Renderer {
             throw new RendererException("cannot query openGL for shader that has not yet been created.");
         }
         HashMap<String, BlockLayout> ssbLayouts = new HashMap<>(); 
+        if (!caps.contains(Caps.ShaderStorageBufferObject)) {
+            return ssbLayouts;
+        }
          
         int numResources = gl4.glGetProgramInterface(id, GL4.GL_SHADER_STORAGE_BLOCK, GL4.GL_ACTIVE_RESOURCES); 
         if (numResources < 1) {
