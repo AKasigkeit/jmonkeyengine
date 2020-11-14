@@ -4622,11 +4622,11 @@ public final class GLRenderer implements Renderer {
     }
 
     @Override
-    public SyncObject.Signal checkSyncObject(SyncObject sync) { 
+    public SyncObject.Signal checkSyncObject(SyncObject sync, long timeoutNanos) { 
         if (!sync.isPlaced()) {
             throw new RendererException("provided SyncObject has not yet been placed");
         }
-        int res = gl3.glClientWaitSync(sync.getSyncRef(), GL3.GL_SYNC_FLUSH_COMMANDS_BIT, 0L);
+        int res = gl3.glClientWaitSync(sync.getSyncRef(), GL3.GL_SYNC_FLUSH_COMMANDS_BIT, timeoutNanos);
         return convertSignal(res);
     }
 

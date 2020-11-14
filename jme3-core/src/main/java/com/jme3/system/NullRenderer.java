@@ -366,7 +366,7 @@ public class NullRenderer implements Renderer {
     }
 
     @Override
-    public SyncObject.Signal checkSyncObject(SyncObject sync) { 
+    public SyncObject.Signal checkSyncObject(SyncObject sync, long timeoutNanos) { 
         return null;
     }
 

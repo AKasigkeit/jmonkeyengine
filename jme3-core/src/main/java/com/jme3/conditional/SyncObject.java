@@ -15,37 +15,98 @@ import com.jme3.util.NativeObject;
 public class SyncObject extends NativeObject {
 
     public static enum Signal {
+        /**
+         * Indicates the SyncObject was signaled already before its state was
+         * queried
+         */
         AlreadySignaled,
+        /**
+         * Indicates the SyncObject didn't get signaled during the query
+         */
         TimeoutExpired,
+        /**
+         * Indicates the SyncObject was signaled during the query
+         */
         ConditionSatisfied,
-        WaitFailed; 
+        /**
+         * Indicates an error occured during the query
+         */
+        WaitFailed;
     }
 
+    private final Renderer RENDERER;
     private Object sync = null;
     private boolean placed = false;
 
-    public SyncObject() {
-
+    public SyncObject(Renderer renderer) {
+        RENDERER = renderer;
     }
 
     //for destructable clone
-    private SyncObject(Object ref) {
+    private SyncObject(Object ref, Renderer renderer) {
         super(0);
+        RENDERER = renderer;
         sync = ref;
     }
 
+    /**
+     * Puts this SyncObject into the Gpu queue.
+     */
+    public void place() {
+        RENDERER.placeSyncObject(this);
+    }
+
+    /**
+     * Checks if the Gpu has already processed past this SyncObject
+     *
+     * @return the current signal
+     */
+    public Signal checkSignal() {
+        return RENDERER.checkSyncObject(this, 0L);
+    }
+    
+    public Signal checkSignal(long timeoutNanos) {
+        return RENDERER.checkSyncObject(this, timeoutNanos);
+    }
+
+    /**
+     * To reuse a SyncObject, call this method prior to placing it again.
+     */
+    public void recycle() {
+        RENDERER.recycleSyncObject(this);
+    }
+
+    /**
+     * USED INTERNALLY.
+     *
+     * @param placed
+     */
     public void setPlaced(boolean placed) {
         this.placed = placed;
     }
 
+    /**
+     * Returns true in case this SyncObject has been placed already and not yet
+     * been recycled, returns false otherwise.
+     *
+     * @return true if this SyncObject is placed
+     */
     public boolean isPlaced() {
         return placed;
     }
 
+    /**
+     * USED INTERNALLY.
+     *
+     * @param obj
+     */
     public void setSyncRef(Object obj) {
         sync = obj;
     }
 
+    /**
+     * USED INTERNALLY.
+     */
     public Object getSyncRef() {
         return sync;
     }
@@ -66,7 +127,7 @@ public class SyncObject extends NativeObject {
 
     @Override
     public NativeObject createDestructableClone() {
-        return new SyncObject(sync);
+        return new SyncObject(sync, RENDERER);
     }
 
     @Override

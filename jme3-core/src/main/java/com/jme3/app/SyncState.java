@@ -69,7 +69,7 @@ public class SyncState extends BaseAppState {
         SyncObject sync;
         SyncObject.Signal signal;
         while ((sync = waiting.peek()) != null) {
-            signal = renderer.checkSyncObject(sync);
+            signal = sync.checkSignal();
             if (signal == SyncObject.Signal.AlreadySignaled || signal == SyncObject.Signal.ConditionSatisfied) {
                 waiting.remove();
                 buffer.add(sync);
@@ -88,11 +88,11 @@ public class SyncState extends BaseAppState {
         //at the end of a frame place a new fence
         SyncObject sync = buffer.poll();
         if (sync == null) {
-            sync = new SyncObject();
+            sync = new SyncObject(renderer);
         } else {
-            renderer.recycleSyncObject(sync);
+            sync.recycle(); 
         }
-        renderer.placeSyncObject(sync);
+        sync.place();
         waiting.add(sync);
 
         //and consider this frame processed by the CPU

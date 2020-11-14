@@ -48,7 +48,7 @@ public class SingleBufferRingBuffer implements RingBuffer {
         SYNC_OBJS = new SyncObject[blocks];
         RING_BLOCKS = new SingleBufferRingBufferBlock[blocks];
         for (int i = 0; i < blocks; i++) {
-            SYNC_OBJS[i] = new SyncObject();
+            SYNC_OBJS[i] = new SyncObject(renderer);
             RING_BLOCKS[i] = new SingleBufferRingBufferBlock(i, BUFFER, i * BYTES, BYTES, MAPPING.getRawData());
         }
         currentBlock = blocks - 1;
@@ -64,10 +64,10 @@ public class SingleBufferRingBuffer implements RingBuffer {
         SyncObject sync = SYNC_OBJS[currentBlock];
         if (sync.isPlaced()) {
             long nano = System.nanoTime();
-            Signal sig = RENDERER.checkSyncObject(sync);
-            while (sig != Signal.AlreadySignaled && sig != Signal.ConditionSatisfied) {
-                sig = RENDERER.checkSyncObject(sync);
-            }
+            Signal sig;
+            do {
+                sig = sync.checkSignal();
+            } while (sig != Signal.AlreadySignaled && sig != Signal.ConditionSatisfied); 
             long dur = System.nanoTime() - nano;
             //System.out.println("waiting for sync took nanoseconds: " + dur + " = milliseconds: "+(dur / 1000000.0));
         }
@@ -107,9 +107,9 @@ public class SingleBufferRingBuffer implements RingBuffer {
         }
         SyncObject sync = SYNC_OBJS[currentBlock];
         if (sync.isPlaced()) {
-            RENDERER.recycleSyncObject(sync);
+            sync.recycle();
         }
-        RENDERER.placeSyncObject(sync);
+        sync.place();
         RING_BLOCKS[currentBlock].valid = false;
     }
 

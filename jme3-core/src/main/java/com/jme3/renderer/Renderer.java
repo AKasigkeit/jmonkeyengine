@@ -677,9 +677,10 @@ public interface Renderer {
      * Checks the current state of the SyncObject. 
      * 
      * @param sync the SyncObject to check
+     * @param timeoutNanos time to wait before giving up (in nanoseconds)
      * @return the current signal
      */
-    public SyncObject.Signal checkSyncObject(SyncObject sync); 
+    public SyncObject.Signal checkSyncObject(SyncObject sync, long timeoutNanos); 
     
     /**
      * Recycles the provided SyncObject so it can be used again in another
