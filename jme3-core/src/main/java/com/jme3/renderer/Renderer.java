@@ -588,10 +588,11 @@ public interface Renderer {
     public int setBuffer(String name, TypedBuffer buffer); 
  
     /**
-     * Queries GL for the layout of all blocks declared in this shader
+     * Queries GL for the layout of all blocks declared in this shader. Use the 
+     * ComputeShaders queryLayouts() method to make sure the defines get updated
      * @param shader shader to query layout of
      */
-    public void queryBlockLayouts(Shader shader);
+    public void queryBlockLayouts(ComputeShader shader);
     
     /**
      * Starts the provided GpuQuery. Queries can be reused, however upon

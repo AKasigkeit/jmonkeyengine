@@ -5,18 +5,13 @@
  */
 package com.jme3.buffer;
 
-import com.jme3.math.ColorRGBA;
-import com.jme3.math.Matrix3f;
-import com.jme3.math.Matrix4f;
-import com.jme3.math.Quaternion;
-import com.jme3.math.Vector2f;
-import com.jme3.math.Vector3f;
-import com.jme3.math.Vector4f;
-import com.jme3.shader.VarType;
 import com.jme3.shader.layout.BlockLayout;
+import com.jme3.shader.layout.Struct;
+import com.jme3.shader.layout.BlockVarType;
 import com.jme3.util.BufferUtils;
 import com.jme3.util.SafeArrayList;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,20 +43,20 @@ public abstract class FieldBuffer extends TypedBuffer {
     public static class BlockField {
 
         private final String NAME;
-        private final VarType VAR_TYPE;
+        private final BlockVarType TYPE;
         private Object value = null;
 
-        public BlockField(String name, VarType type) {
+        public BlockField(String name, BlockVarType type) {
             NAME = name;
-            VAR_TYPE = type;
+            TYPE = type;
         }
 
         public String getName() {
             return NAME;
         }
 
-        public VarType getVarType() {
-            return VAR_TYPE;
+        public BlockVarType getBlockVarType() {
+            return TYPE;
         }
 
         public void setValue(Object value) {
@@ -71,32 +66,6 @@ public abstract class FieldBuffer extends TypedBuffer {
         public Object getValue() {
             return value;
         }
-    }
-
-    protected static final Map<Class<?>, VarType> CLASS_TO_VAR_TYPE = new HashMap<>();
-
-    static {
-        CLASS_TO_VAR_TYPE.put(float[].class, VarType.FloatArray);
-        CLASS_TO_VAR_TYPE.put(int[].class, VarType.IntArray);
-        CLASS_TO_VAR_TYPE.put(Float.class, VarType.Float);
-        CLASS_TO_VAR_TYPE.put(Integer.class, VarType.Int);
-        CLASS_TO_VAR_TYPE.put(Boolean.class, VarType.Boolean);
-        CLASS_TO_VAR_TYPE.put(Vector2f.class, VarType.Vector2);
-        CLASS_TO_VAR_TYPE.put(Vector3f.class, VarType.Vector3);
-        CLASS_TO_VAR_TYPE.put(ColorRGBA.class, VarType.Vector4);
-        CLASS_TO_VAR_TYPE.put(Quaternion.class, VarType.Vector4);
-        CLASS_TO_VAR_TYPE.put(Vector4f.class, VarType.Vector4);
-
-        CLASS_TO_VAR_TYPE.put(Vector2f[].class, VarType.Vector2Array);
-        CLASS_TO_VAR_TYPE.put(Vector3f[].class, VarType.Vector3Array);
-        CLASS_TO_VAR_TYPE.put(Vector4f[].class, VarType.Vector4Array);
-        CLASS_TO_VAR_TYPE.put(ColorRGBA[].class, VarType.Vector4Array);
-        CLASS_TO_VAR_TYPE.put(Quaternion[].class, VarType.Vector4Array);
-
-        CLASS_TO_VAR_TYPE.put(Matrix3f.class, VarType.Matrix3);
-        CLASS_TO_VAR_TYPE.put(Matrix4f.class, VarType.Matrix4);
-        CLASS_TO_VAR_TYPE.put(Matrix3f[].class, VarType.Matrix3Array);
-        CLASS_TO_VAR_TYPE.put(Matrix4f[].class, VarType.Matrix4Array);
     }
 
     protected final SafeArrayList<BlockField> fields = new SafeArrayList<>(BlockField.class);
@@ -117,8 +86,10 @@ public abstract class FieldBuffer extends TypedBuffer {
      * @param name the name of the field as specified in the shader code
      * @param type the type of the variable, must match its glsl counterpart
      */
-    public void declareField(String name, VarType type) {
-        checkType(type);
+    public void declareField(String name, BlockVarType type) {
+        if (name == null || type == null) {
+            throw new IllegalArgumentException("none of the arguments can be null");
+        }
         if (fieldsMap.containsKey(name)) {
             throw new IllegalArgumentException("field of name " + name + " was already declared");
         }
@@ -138,12 +109,31 @@ public abstract class FieldBuffer extends TypedBuffer {
     public void setField(String name, Object value) {
         BlockField field = fieldsMap.get(name);
         if (field == null) {
-            VarType type = getVarTypeByValue(value);
+            BlockVarType type = BlockVarType.fromClass(value.getClass());
+            if (value.getClass().isArray() && Struct.class.isAssignableFrom(value.getClass().getComponentType())) {
+                type = BlockVarType.StructArray;
+            } else if ((value instanceof Collection<?>) && !((Collection<?>) value).isEmpty()
+                    && Struct.class.isAssignableFrom(((Collection<?>) value).iterator().next().getClass())) {
+                type = BlockVarType.StructArray;
+            } else if (Struct.class.isAssignableFrom(value.getClass())) {
+                type = BlockVarType.Struct;
+            }
+            if (type == null) {
+                throw new IllegalArgumentException("cannot automatically detect type of " + value);
+            }
             declareField(name, type);
             field = fieldsMap.get(name);
         }
 
         field.setValue(value);
+        fieldsChanged = true;
+    }
+
+    /**
+     * Will mark the fields of this buffer as changed, ie the data will get
+     * resent upon next usage.
+     */
+    public void markFieldsChanged() {
         fieldsChanged = true;
     }
 
@@ -204,33 +194,5 @@ public abstract class FieldBuffer extends TypedBuffer {
      */
     public void setLayout(BlockLayout layout) {
         this.layout = layout;
-    }
-
-    protected abstract VarType getVarTypeByValue(Object value);
-
-    protected static void checkType(VarType type) {
-        if (type == null) {
-            return;
-        }
-        switch (type) {
-            case Boolean:
-            case Int:
-            case IntArray:
-            case Float:
-            case FloatArray:
-            case Vector2:
-            case Vector2Array:
-            case Vector3:
-            case Vector3Array:
-            case Vector4:
-            case Vector4Array:
-            case Matrix3:
-            case Matrix3Array:
-            case Matrix4:
-            case Matrix4Array:
-                return;
-            default:
-                throw new IllegalArgumentException("VarType " + type + " is not allowed in UniformBuffers / ShaderStorageBuffers");
-        }
     }
 }

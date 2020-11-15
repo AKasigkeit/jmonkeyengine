@@ -16,6 +16,7 @@ import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.Caps;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Spatial;
@@ -50,6 +51,9 @@ public class TestMultiDrawIndirect extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        if (!renderer.getCaps().contains(Caps.MultiDrawIndirect)) {
+            throw new UnsupportedOperationException("Hardware doesnt support MultiDrawIndirect");
+        }
         //create a buffer for the index data
         indexBuffer = UntypedBuffer.createNewStorageDirect(UntypedBuffer.MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
         indexBuffer.initialize(NUM_QUADS * 6 * 4); //6 indices per quad with 2 bytes each (could be shared in this case where all shapes are the same but to not "cheat" here, i upload it once per quad)

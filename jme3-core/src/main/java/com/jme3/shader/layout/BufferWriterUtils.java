@@ -12,7 +12,6 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
-import com.jme3.shader.VarType;
 import com.jme3.util.SafeArrayList;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -21,45 +20,41 @@ import java.util.Collection;
  *
  * @author Alexander Kasigkeit
  */
+@SuppressWarnings("unchecked")
 public class BufferWriterUtils {
 
-    public static int writeField(final ByteBuffer data, int index, int length, int arrStride, int matStride, VarType type, Object value) {
-        if (index < 0) {
-            return 0;
-        }
+    public static int writeField(final ByteBuffer data, int arrStride, int matStride, BlockVarType type, Object value) { 
 
         switch (type) {
             case Int:
                 return writeInt(data, ((Number) value).intValue());
             case Float:
                 return writeFloat(data, ((Number) value).floatValue());
-            case Boolean:
-                return writeBoolean(data, (Boolean) value);
-            case Vector2:
+            case Vec2:
                 return writeVector2(data, (Vector2f) value);
-            case Vector3:
+            case Vec3:
                 return writeVector3(data, (Vector3f) value);
-            case Vector4:
+            case Vec4:
                 return writeVector4(data, value);
-            case Matrix3:
+            case Mat3:
                 return writeMatrix3(data, (Matrix3f) value, matStride - 12);
-            case Matrix4:
+            case Mat4:
                 return writeMatrix4(data, (Matrix4f) value, matStride - 16);
             case FloatArray:
                 return writeFloatArray(data, (float[]) value, arrStride - 4);
             case IntArray:
                 return writeIntArray(data, (int[]) value, arrStride - 4);
-            case Vector2Array:
+            case Vec2Array:
                 return writeVector2Array(data, value, arrStride - 8);
-            case Vector3Array:
+            case Vec3Array:
                 return writeVector3Array(data, value, arrStride - 12);
-            case Vector4Array:
+            case Vec4Array:
                 return writeVector4Array(data, value, arrStride - 16);
-            case Matrix3Array:
+            case Mat3Array:
                 int mat3colPad = matStride - 12;
                 int mat3arrPad = arrStride - 3 * matStride;
                 return writeMatrix3Array(data, value, mat3colPad, mat3arrPad);
-            case Matrix4Array:
+            case Mat4Array:
                 int mat4colPad = matStride - 16;
                 int mat4arrPad = arrStride - 4 * matStride;
                 return writeMatrix4Array(data, value, mat4colPad, mat4arrPad);

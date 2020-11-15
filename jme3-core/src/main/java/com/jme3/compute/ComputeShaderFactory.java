@@ -71,6 +71,10 @@ public class ComputeShaderFactory {
     public ComputeShader createComputeShader(String sourceCode, String language) {
         return new ComputeShader(this, sourceCode, language, null);
     }
+    
+    protected void queryLayouts(ComputeShader shader) {
+        RENDERER.queryBlockLayouts(shader);
+    }
 
     protected void run(ComputeShader computeShader, DispatchIndirectBuffer buffer, int offset, MemoryBarrierBits bits) {
         RENDERER.runComputeShader(computeShader, buffer, offset);

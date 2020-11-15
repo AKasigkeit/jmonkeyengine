@@ -34,8 +34,7 @@ package com.jme3.shader;
 import com.jme3.renderer.Renderer;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.shader.layout.BlockFieldLayout;
-import com.jme3.shader.layout.BlockLayout;
-import com.jme3.shader.layout.Type;
+import com.jme3.shader.layout.BlockLayout; 
 import com.jme3.util.IntMap;
 import com.jme3.util.IntMap.Entry;
 import com.jme3.util.ListMap;
@@ -361,9 +360,8 @@ public final class Shader extends NativeObject {
                 System.out.println("    - index : "+lay.getIndex());
                 System.out.println("    - size  : "+lay.getSize());
                 for (BlockFieldLayout blockLay : lay.getFieldLayouts()) {
-                    System.out.println("       - name     : "+blockLay.getName());
-                    Type type = Type.fromGLConstant(blockLay.getType());
-                    System.out.println("       - type     : "+(type != null ? type.getVarType() : "unsupported"));
+                    System.out.println("       - name     : "+blockLay.getName()); 
+                    System.out.println("       - type     : "+(blockLay.getType() != null ? blockLay.getType() : "unsupported"));
                     System.out.println("       - index    : "+blockLay.getIndex());
                     System.out.println("       - offset   : "+blockLay.getOffset());
                     System.out.println("       - arraySize     : "+blockLay.getArraySize());

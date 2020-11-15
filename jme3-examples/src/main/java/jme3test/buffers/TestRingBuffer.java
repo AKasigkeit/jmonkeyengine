@@ -13,6 +13,7 @@ import com.jme3.material.Material;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.Caps;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Spatial;
@@ -57,6 +58,9 @@ public class TestRingBuffer extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        if (!renderer.getCaps().contains(Caps.MapBuffer)) {
+            throw new UnsupportedOperationException("Hardware doesnt support BufferMapping");
+        }
         for (int i = 0; i < SEEDS.length; i++) {
             SEEDS[i] = (float) (Math.random() * SCREEN_RANGE);
         }

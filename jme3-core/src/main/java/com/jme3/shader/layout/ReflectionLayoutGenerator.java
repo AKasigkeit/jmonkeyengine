@@ -48,7 +48,26 @@ public class ReflectionLayoutGenerator {
             Member m = field.getDeclaredAnnotation(Member.class);
             if (m != null) {
                 String fieldName = field.getName();
-                FieldInfo info = new FieldInfo(fieldName, field, m);
+                BlockVarType type = m.type();
+                if (type == null || type == BlockVarType.AutoDetect) {
+                    type = BlockVarType.fromClass(field.getType());
+                    if (type == null) { //not a well known one, check if it is a struct or struct array
+                        if (field.getType().isArray() && Struct.class.isAssignableFrom(field.getType().getComponentType())) {
+                            type = BlockVarType.StructArray;
+                        } else if (Struct.class.isAssignableFrom(field.getType())) {
+                            type = BlockVarType.Struct;
+                        }
+                    }
+                }
+
+                if (type == null) {
+                    throw new IllegalArgumentException("cannot detect type of field: " + field.getName());
+                }
+                String maps = m.maps();
+                if (maps == null || Member.AUTOMAPPING.equals(maps)) {
+                    maps = fieldName;
+                }
+                FieldInfo info = new FieldInfo(fieldName, field, type, maps);
                 infoMap.put(fieldName, info);
                 infoList.add(info);
             }
@@ -74,36 +93,50 @@ public class ReflectionLayoutGenerator {
 
         private final String name;
         private final Field field;
-        private final Member member;
+        private final String maps;
+        private final BlockVarType type;
 
-        private FieldInfo(String name, Field field, Member member) {
+        private FieldInfo(String name, Field field, BlockVarType type, String maps) {
             this.name = name;
             this.field = field;
-            this.member = member;
+            this.type = type;
+            this.maps = maps;
         }
 
+        /**
+         * Returns the glsl name of this field
+         *
+         * @return the glsl name
+         */
+        public String getNameInShader() {
+            return maps;
+        }
+
+        /**
+         * Returns the cpu-side name of this field
+         *
+         * @return the cpu-side name
+         */
         public String getName() {
             return name;
         }
 
+        /**
+         * Returns the Field used for reflection
+         *
+         * @return field for reflection
+         */
         public Field getField() {
             return field;
         }
 
-        public Member getDefinition() {
-            return member;
-        }
-
-        public boolean isArray() {
-            return member.length() != 1;
-        }
-
-        public int getLength() {
-            return member.length();
-        }
-
-        public Type getType() {
-            return member.type();
+        /**
+         * Returns the BlockVarType of this Field
+         *
+         * @return the blockVarType
+         */
+        public BlockVarType getType() {
+            return type;
         }
     }
 

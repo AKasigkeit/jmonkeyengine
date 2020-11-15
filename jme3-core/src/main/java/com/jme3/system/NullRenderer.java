@@ -328,7 +328,7 @@ public class NullRenderer implements Renderer {
     }
 
     @Override
-    public void queryBlockLayouts(Shader shader) {
+    public void queryBlockLayouts(ComputeShader shader) {
     }
 
     @Override

@@ -11,6 +11,7 @@ import com.jme3.renderer.Caps;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
+import com.jme3.system.AppSettings;
 import com.jme3.texture.Texture;
 
 /**
@@ -23,6 +24,9 @@ public class TestCameraUniformBuffer extends SimpleApplication {
 
     public static void main(String[] args) {
         TestCameraUniformBuffer t = new TestCameraUniformBuffer();
+        //AppSettings s = new AppSettings(true);
+        //s.setRenderer(AppSettings.LWJGL_OPENGL33);
+        //t.setSettings(s);
         t.start();
     }
 
@@ -30,6 +34,9 @@ public class TestCameraUniformBuffer extends SimpleApplication {
 
     @Override
     public void simpleInitApp() { 
+        if (!renderer.getCaps().contains(Caps.UniformBufferObject)) {
+            throw new UnsupportedOperationException("Hardware doesnt support UniformBufferObjects");
+        }
         
         Texture tex = assetManager.loadTexture("Textures/Terrain/splat/dirt.jpg");
         Material mat = new Material(assetManager, "jme3test/ubo/CameraUniformBuffer.j3md");  

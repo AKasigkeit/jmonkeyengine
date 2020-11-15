@@ -7,14 +7,11 @@ package com.jme3.buffer;
 
 import com.jme3.buffer.UntypedBuffer.BufferDataUsage;
 import com.jme3.buffer.UntypedBuffer.MemoryMode;
-import com.jme3.shader.VarType;
 import com.jme3.shader.layout.BlockFieldLayout;
 import com.jme3.shader.layout.BufferWriterUtils;
 import com.jme3.util.BufferUtils;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Collection;
-import java.util.List;
 
 /**
  *
@@ -50,7 +47,7 @@ public class UniformBuffer extends FieldBuffer {
         }
         UntypedBuffer buffer = UntypedBuffer.createNewBufferDataLazy(MemoryMode.GpuOnly, BufferDataUsage.StaticRead);
         //buffer.initialize(BufferUtils.createByteBuffer(0)); //empty for now, will adjust automatically
-        buffer.initialize(1);
+        buffer.initialize(Math.max(1, writer.getBufferSize()));
         return buffer.asUniformBuffer(writer);
     }
 
@@ -84,7 +81,7 @@ public class UniformBuffer extends FieldBuffer {
             String name = lay.getName();
             if (name.endsWith("[0]")) {
                 name = name.substring(0, name.length() - 3);
-            } 
+            }
 
             BlockField field = fieldsMap.get(name);
             if (field == null) {
@@ -93,7 +90,7 @@ public class UniformBuffer extends FieldBuffer {
 
             data.position(lay.getOffset());
 
-            bytesWritten = BufferWriterUtils.writeField(data, lay.getIndex(), lay.getArraySize(), lay.getArrayStride(), lay.getMatrixStride(), field.getVarType(), field.getValue());
+            bytesWritten = BufferWriterUtils.writeField(data, lay.getArrayStride(), lay.getMatrixStride(), field.getBlockVarType(), field.getValue());
             bytesWrittenTotal += bytesWritten;
             //System.out.println("writing at offset: " + lay.getOffset() + ": " + field.getValue() + " -> " + bytesWritten + " bytes");
 
@@ -120,21 +117,6 @@ public class UniformBuffer extends FieldBuffer {
             data.position(firstByte).limit(lastByte);
             BUFFER.updateData(data, firstByte);
         }
-    }
-
-    @Override
-    protected VarType getVarTypeByValue(Object value) {
-        VarType varType = CLASS_TO_VAR_TYPE.get(value.getClass());
-        if (varType != null) {
-            return varType;
-        } else if (value instanceof Collection<?> && ((Collection) value).isEmpty()) {
-            throw new IllegalArgumentException("Can't calculate a var type for the empty collection value[" + value + "].");
-        } else if (value instanceof List<?>) {
-            return getVarTypeByValue(((List) value).get(0));
-        } else if (value instanceof Collection<?>) {
-            return getVarTypeByValue(((Collection) value).iterator().next());
-        }
-        throw new IllegalArgumentException("Can't calculate a var type for the value " + value + " of class " + value.getClass().getSimpleName());
     }
 
 }

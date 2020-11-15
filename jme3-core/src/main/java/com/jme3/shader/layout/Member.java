@@ -19,8 +19,10 @@ import java.lang.annotation.Target;
 public @interface Member {
 
     public static final int OPEN_ARRAY = 0;
+    public static final String AUTOMAPPING = "automapping";
 
-    public Type type();
-
-    public int length() default 1;
+    public BlockVarType type() default BlockVarType.AutoDetect;
+    
+    public String maps() default AUTOMAPPING;
+ 
 }

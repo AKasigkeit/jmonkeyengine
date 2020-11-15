@@ -7,6 +7,7 @@ package jme3test.buffers;
 
 import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
+import com.jme3.buffer.FieldBuffer;
 import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.ShaderStorageBuffer;
 import com.jme3.buffer.UntypedBuffer;
@@ -18,6 +19,7 @@ import com.jme3.conditional.GpuQuery;
 import com.jme3.material.Material;
 import com.jme3.post.SceneProcessor;
 import com.jme3.profile.AppProfiler;
+import com.jme3.renderer.Caps;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.GeometryList;
@@ -51,10 +53,13 @@ public class TestQueryBuffer extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        if (!renderer.getCaps().contains(Caps.QueryBuffer)) {
+            throw new UnsupportedOperationException("Hardware doesnt support QueryBuffers");
+        }
         UntypedBuffer buffer = UntypedBuffer.createNewStorageDirect(MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
         buffer.initialize(NUM_OBJECTS * 4);
         queryBuffer = buffer.asQueryBuffer();
-        ShaderStorageBuffer ssbo = buffer.asShaderStorageBuffer(null);
+        ShaderStorageBuffer ssbo = buffer.asShaderStorageBuffer(FieldBuffer.FieldBufferWriter.NULL_WRITER);
         //ShaderStorageBuffer ssbo = ShaderStorageBuffer.createNewAutolayout();
         int[] arr = new int[NUM_OBJECTS];
         for (int i = 0; i < NUM_OBJECTS; i++) {

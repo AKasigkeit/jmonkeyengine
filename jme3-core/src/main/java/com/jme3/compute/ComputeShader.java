@@ -18,6 +18,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
 import com.jme3.shader.Shader;
 import com.jme3.shader.VarType;
+import com.jme3.shader.layout.BlockLayout;
 import com.jme3.texture.Image.Format;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture.Access;
@@ -366,6 +367,38 @@ public class ComputeShader {
         } else {
             p.setValue(buffer);
         }
+    }
+
+    /**
+     * Queries the underlying system for the layout of the buffers declared in
+     * the shader. Note that those might change if you change the defines and
+     * your code depends on that.
+     */
+    public void queryLayouts() {
+        createIfNeeded();
+        FACTORY.queryLayouts(this);
+    }
+
+    /**
+     * Returns the ShaderStorageBuffer LayoutBlock related to the specified
+     * name.
+     *
+     * @param name name of the Block to query Layout of
+     * @return blocklayout
+     */
+    public BlockLayout getShaderStorageBufferLayout(String name) {
+        return shader.getShaderStorageBlockLayout("m_" + name);
+    }
+
+    /**
+     * Returns the UniformBuffer LayoutBlock related to the specified
+     * name.
+     *
+     * @param name name of the Block to query Layout of
+     * @return blocklayout
+     */
+    public BlockLayout getUniformBufferLayout(String name) {
+        return shader.getUniformBlockLayout("m_" + name);
     }
 
     /**

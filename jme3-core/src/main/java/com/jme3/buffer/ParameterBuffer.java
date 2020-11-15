@@ -21,7 +21,7 @@ public class ParameterBuffer extends TypedBuffer {
         return buffer.asParameterBuffer();
     }
 
-    public ParameterBuffer(UntypedBuffer buffer) {
+    protected ParameterBuffer(UntypedBuffer buffer) {
         super(buffer, Type.ParameterBuffer);
     }
 

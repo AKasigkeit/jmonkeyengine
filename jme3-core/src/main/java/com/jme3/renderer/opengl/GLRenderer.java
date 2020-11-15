@@ -69,6 +69,7 @@ import com.jme3.shader.Shader.ShaderSource;
 import com.jme3.shader.Shader.ShaderType;
 import com.jme3.shader.layout.BlockFieldLayout;
 import com.jme3.shader.layout.BlockLayout;
+import com.jme3.shader.layout.BlockVarType;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.texture.FrameBuffer.RenderBuffer;
 import com.jme3.texture.Image;
@@ -1446,13 +1447,15 @@ public final class GLRenderer implements Renderer {
 
             bindBuffer(bufferBlock, bufferObject, shaderId, bufferType);
         } else {
-            //TypedBuffer
+            //TypedBuffer 
+            bindProgram(shader); 
+            queryBlockLayouts(shader); 
+            
             int shaderId = shader.getId();
             int unit = setBuffer(bufferBlock.getName(), typedBuffer);
             boolean isSSBOorUBO = typedBuffer.getType() == TypedBuffer.Type.UniformBuffer || typedBuffer.getType() == TypedBuffer.Type.ShaderStorageBuffer;
         
             int index = bufferBlock.getIndex();
-            bindProgram(shader); 
             
             if (isSSBOorUBO) {
                 if (index == ShaderVariable.LOC_NOT_DEFINED) { 
@@ -1750,7 +1753,6 @@ public final class GLRenderer implements Renderer {
             }
             shader.clearUpdateNeeded();
             if (created) {
-                queryBlockLayouts(shader); 
                 // Register shader for clean up if it was created in this method.
                 objManager.registerObject(shader);
                 statistics.onNewShader();
@@ -3970,6 +3972,17 @@ public final class GLRenderer implements Renderer {
     }
     
     @Override
+    public void queryBlockLayouts(ComputeShader computeShader) { 
+        prepareShader(computeShader);
+        Shader shader = computeShader.getShader(); 
+        if (shader.isUpdateNeeded()) {
+            updateShaderData(shader);
+        }
+        
+        queryBlockLayouts(shader);
+    }
+    
+    @Override
     public void runComputeShader(ComputeShader shader, int x, int y, int z) {
         if (x < 1 || y < 1 || z < 1) {
             throw new IllegalArgumentException("none of the sizes can be smaller than 1");
@@ -4302,9 +4315,8 @@ public final class GLRenderer implements Renderer {
        bindBufferUnit(buffer.getType(), buffer.getUntypedBuffer(), unit);
        return unit;
     }
-     
-    @Override
-    public void queryBlockLayouts(Shader shader) {
+      
+    private void queryBlockLayouts(Shader shader) {
         if (shader.hasLayoutsQueried()) {
             return;
         }
@@ -4326,7 +4338,7 @@ public final class GLRenderer implements Renderer {
         
     }
      
-    public HashMap<String, BlockLayout> queryUniformBlockLayout(int id) { 
+    private HashMap<String, BlockLayout> queryUniformBlockLayout(int id) { 
         if (id == -1) {
             throw new RendererException("cannot query openGL for shader that has not yet been created.");
         }
@@ -4381,8 +4393,9 @@ public final class GLRenderer implements Renderer {
                 int varMatStride = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_MATRIX_STRIDE);
                 boolean varMatRowMajor = gl3.glGetActiveUniformsi(id, varIndex, GL3.GL_UNIFORM_IS_ROW_MAJOR) == 1; 
                  
+                BlockVarType type = convertBlockType(varType, varArraySize);
                 tmpLayoutList.add(new BlockFieldLayout(
-                        varName, varIndex, varOffset, varType, -1, varArrayStride, varArraySize, 
+                        varName, varIndex, varOffset, type, -1, varArrayStride, varArraySize, 
                         varMatStride, 0, 0, varMatRowMajor));
                 
                 //ubLayout.addFieldLayout(new BlockFieldLayout(
@@ -4476,8 +4489,9 @@ public final class GLRenderer implements Renderer {
                 getProgramResource(propsBuf, lenBuf, paramsBuf, id, varIndex, GL4.GL_TOP_LEVEL_ARRAY_STRIDE, GL4.GL_BUFFER_VARIABLE);
                 int varTopLevelArrayStride = paramsBuf.get(0);
                  
+                BlockVarType type = convertBlockType(varType, varArraySize);
                 tmpLayoutList.add(new BlockFieldLayout(
-                        varName, varIndex, varOffset, varType, varBlockIndex, varArrayStride, varArraySize, 
+                        varName, varIndex, varOffset, type, varBlockIndex, varArrayStride, varArraySize, 
                         varMatStride, varTopLevelArraySize, varTopLevelArrayStride, varMatRowMajor));
             }
             
@@ -4672,5 +4686,27 @@ public final class GLRenderer implements Renderer {
             default:
                 throw new IllegalArgumentException("unknown query type: "+type);
         }
+    }
+    
+    private BlockVarType convertBlockType(int glValue, int arrSize) { 
+        switch (glValue) {
+            //case GL2.GL_BOOL:
+            //    return BlockVarType.Bool;
+            case GL2.GL_FLOAT:
+                return arrSize == 1 ? BlockVarType.Float : BlockVarType.FloatArray;
+            case GL2.GL_INT:
+                return arrSize == 1 ? BlockVarType.Int : BlockVarType.IntArray;
+            case GL2.GL_FLOAT_VEC2:
+                return arrSize == 1 ? BlockVarType.Vec2 : BlockVarType.Vec2Array;
+            case GL2.GL_FLOAT_VEC3:
+                return arrSize == 1 ? BlockVarType.Vec3 : BlockVarType.Vec3Array;
+            case GL2.GL_FLOAT_VEC4:
+                return arrSize == 1 ? BlockVarType.Vec4 : BlockVarType.Vec4Array;
+            case GL2.GL_FLOAT_MAT3:
+                return arrSize == 1 ? BlockVarType.Mat3 : BlockVarType.Mat3Array;
+            case GL2.GL_FLOAT_MAT4:
+                return arrSize == 1 ? BlockVarType.Mat4 : BlockVarType.Mat4Array;
+        }
+        return null;
     }
 }
