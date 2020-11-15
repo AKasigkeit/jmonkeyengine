@@ -694,13 +694,11 @@ public final class GLRenderer implements Renderer {
     }
 
     private int getInteger(int en) {
-        intBuf16.clear();
         gl.glGetInteger(en, intBuf16);
         return intBuf16.get(0);
     }
 
     private int getInteger(int en, int idx) {
-        intBuf16.clear();
         gl3.glGetInteger(en, idx, intBuf16);
         return intBuf16.get(0);
     }
@@ -761,6 +759,7 @@ public final class GLRenderer implements Renderer {
             intBuf16.position(0).limit(1);
             gl3.glGenVertexArrays(intBuf16);
             int vaoId = intBuf16.get(0);
+            intBuf16.clear();
             gl3.glBindVertexArray(vaoId);
         }
         if (gl2 != null && !(gl instanceof GLES_30)) {
@@ -2181,6 +2180,7 @@ public final class GLRenderer implements Renderer {
 
                     intBuf16.flip();
                     glext.glDrawBuffers(intBuf16);
+                    intBuf16.clear();
                     context.boundDrawBuf = MRT_OFF + fb.getNumColorBuffers();
                     
                 } else {
@@ -4007,6 +4007,7 @@ public final class GLRenderer implements Renderer {
         store[0] = intBuf16.get(0);
         store[1] = intBuf16.get(1);
         store[2] = intBuf16.get(2);
+        intBuf16.clear();
     }
 
     @Override
@@ -4354,8 +4355,7 @@ public final class GLRenderer implements Renderer {
         }
         
         for (int i = 0; i < numResources; i++) {
-            String name = gl3.glGetActiveUniformBlockName(id, i); 
-            
+            String name = gl3.glGetActiveUniformBlockName(id, i);  
             gl3.glGetActiveUniformBlockiv(id, i, GL3.GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, intBuf16);
             int numVariables = intBuf16.get(0); 
             if (numVariables < 1) {
@@ -4504,6 +4504,7 @@ public final class GLRenderer implements Renderer {
             BlockLayout ubLayout = new BlockLayout(layouts, name, i, bufferSize);
             ssbLayouts.put(name, ubLayout);
         }
+        intBuf16.clear();
         return ssbLayouts;
     }
     
