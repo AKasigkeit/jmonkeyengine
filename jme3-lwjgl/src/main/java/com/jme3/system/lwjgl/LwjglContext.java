@@ -164,9 +164,13 @@ public abstract class LwjglContext implements JmeContext {
         int vers[] = getGLVersion(settings.getRenderer());
         if (settings.getBoolean("GraphicsDebug") || (vers != null && vers[0] != 2)) {
             ContextAttribs attr;
+            // see https://www.glfw.org/docs/3.3/window_guide.html#window_hints_ctx
+            // "GLFW_OPENGL_PROFILE [...] If requesting an OpenGL version below 3.2, GLFW_OPENGL_ANY_PROFILE must be used"
             if (vers != null && vers[0] != 2) {
-                attr = new ContextAttribs(vers[0], vers[1]);
-                attr = attr.withProfileCore(true).withForwardCompatible(true).withProfileCompatibility(false);
+                attr = new ContextAttribs(vers[0], vers[1]).withForwardCompatible(true);
+                if (!(vers[0] == 3 && (vers[1] == 0 || vers[1] == 1))) {
+                    attr = attr.withProfileCore(true).withProfileCompatibility(false);
+                }
             } else {
                 attr = new ContextAttribs();
             }

@@ -77,11 +77,15 @@ public abstract class LwjglWindow extends LwjglContext implements Runnable {
     private static final Map<String, Runnable> RENDER_CONFIGS = new HashMap<>();
 
     static {
+        // see https://www.glfw.org/docs/3.3/window_guide.html#window_hints_ctx
+        // "GLFW_OPENGL_PROFILE [...] If requesting an OpenGL version below 3.2, GLFW_OPENGL_ANY_PROFILE must be used"
         RENDER_CONFIGS.put(AppSettings.LWJGL_OPENGL30, () -> {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
         });
         RENDER_CONFIGS.put(AppSettings.LWJGL_OPENGL31, () -> {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
         });
@@ -116,6 +120,10 @@ public abstract class LwjglWindow extends LwjglContext implements Runnable {
         RENDER_CONFIGS.put(AppSettings.LWJGL_OPENGL45, () -> {
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+        });
+        RENDER_CONFIGS.put(AppSettings.LWJGL_OPENGL46, () -> {
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         });
     }
 

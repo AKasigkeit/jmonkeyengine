@@ -210,6 +210,16 @@ public final class AppSettings extends HashMap<String, Object> {
     public static final String LWJGL_OPENGL45 = "LWJGL-OpenGL45";
 
     /**
+     * Use LWJGL as the display system and force using the OpenGL4.6 renderer.
+     * <p>
+     * If the underlying system does not support OpenGL4.6, then the context
+     * initialization will throw an exception.
+     *
+     * @see AppSettings#setRenderer(java.lang.String)
+     */
+    public static final String LWJGL_OPENGL46 = "LWJGL-OpenGL46";
+
+    /**
      * Use the LWJGL OpenAL based renderer for audio capabilities.
      *
      * @see AppSettings#setAudioRenderer(java.lang.String)
