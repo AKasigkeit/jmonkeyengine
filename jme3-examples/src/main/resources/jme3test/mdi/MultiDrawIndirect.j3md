@@ -1,6 +1,7 @@
 MaterialDef CameraUniformBuffer {
 
     MaterialParameters { 
+        Boolean UseScale
     }
 
     Technique {
@@ -8,8 +9,11 @@ MaterialDef CameraUniformBuffer {
         FragmentShader GLSL330: jme3test/mdi/MultiDrawIndirect.frag
 
         WorldParameters {
-            WorldMatrix;
             CameraBuffer;
+        }
+
+        Defines {
+            SCALE : UseScale
         }
     }
 
