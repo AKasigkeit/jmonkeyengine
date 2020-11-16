@@ -116,7 +116,8 @@ public abstract class LwjglContext implements JmeContext {
             AppSettings.LWJGL_OPENGL42,
             AppSettings.LWJGL_OPENGL43,
             AppSettings.LWJGL_OPENGL44,
-            AppSettings.LWJGL_OPENGL45
+            AppSettings.LWJGL_OPENGL45,
+            AppSettings.LWJGL_OPENGL46
     ));
 
     public static final boolean CL_GL_SHARING_POSSIBLE = true;
