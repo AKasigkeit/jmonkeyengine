@@ -1,30 +1,54 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (c) 2009-2020 jMonkeyEngine
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * 
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * 
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * 
+ * * Neither the name of 'jMonkeyEngine' nor the names of its contributors
+ *   may be used to endorse or promote products derived from this software
+ *   without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.jme3.compute;
-
-import com.jme3.renderer.opengl.GL4;
+package com.jme3.renderer.compute;
 
 /**
  *
  *
  * @author Alexander Kasigkeit
  */
-public class MemoryBarrierBits {
+public interface MemoryBarrier {
 
     /**
      * Descriptions taken directly from
      * https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml
      */
-    public enum MemoryBarrierBit {
+    public enum Flag {
         /**
          * This is a special value that inserts memory barriers for all
          * supported types
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        All(GL4.GL_ALL_BARRIER_BITS),
+        All,
         /**
          * If set, vertex data sourced from buffer objects after the barrier
          * will reflect data written by shaders prior to the barrier. The set of
@@ -33,7 +57,7 @@ public class MemoryBarrierBits {
          * GL_VERTEX_ATTRIB_ARRAY_BUFFER bindings.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        VertexAttribArray(GL4.GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT),
+        VertexAttribArray,
         /**
          * If set, vertex array indices sourced from buffer objects after the
          * barrier will reflect data written by shaders prior to the barrier.
@@ -41,20 +65,20 @@ public class MemoryBarrierBits {
          * GL_ELEMENT_ARRAY_BUFFER binding.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        ElementArray(GL4.GL_ELEMENT_ARRAY_BARRIER_BIT),
+        ElementArray,
         /**
          * Shader uniforms sourced from buffer objects after the barrier will
          * reflect data written by shaders prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        Uniform(GL4.GL_UNIFORM_BARRIER_BIT),
+        Uniform,
         /**
          * Texture fetches from shaders, including fetches from buffer object
          * memory via buffer textures, after the barrier will reflect data
          * written by shaders prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        TextureFetch(GL4.GL_TEXTURE_FETCH_BARRIER_BIT),
+        TextureFetch,
         /**
          * Memory accesses using shader image load, store, and atomic built-in
          * functions issued after the barrier will reflect data written by
@@ -64,7 +88,7 @@ public class MemoryBarrierBits {
          * prior to the barrier complete.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        ShaderImageAccess(GL4.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT),
+        ShaderImageAccess,
         /**
          * Command data sourced from buffer objects by Draw*Indirect commands
          * after the barrier will reflect data written by shaders prior to the
@@ -72,7 +96,7 @@ public class MemoryBarrierBits {
          * GL_DRAW_INDIRECT_BUFFER binding.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        Command(GL4.GL_COMMAND_BARRIER_BIT),
+        Command,
         /**
          * Reads and writes of buffer objects via the GL_PIXEL_PACK_BUFFER and
          * GL_PIXEL_UNPACK_BUFFER bindings (via glReadPixels, glTexSubImage1D,
@@ -82,7 +106,7 @@ public class MemoryBarrierBits {
          * prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        PixelBuffer(GL4.GL_PIXEL_BUFFER_BARRIER_BIT),
+        PixelBuffer,
         /**
          * Writes to a texture via glTex(Sub)Image*, glCopyTex(Sub)Image*,
          * glCompressedTex(Sub)Image*, and reads via glGetTexImage after the
@@ -92,7 +116,7 @@ public class MemoryBarrierBits {
          * the barrier complete
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        TextureUpdate(GL4.GL_TEXTURE_UPDATE_BARRIER_BIT),
+        TextureUpdate,
         /**
          * Reads or writes via glBufferSubData, glCopyBufferSubData, or
          * glGetBufferSubData, or to buffer object memory mapped by glMapBuffer
@@ -102,7 +126,7 @@ public class MemoryBarrierBits {
          * writes to the same memory initiated prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        BufferUpdate(GL4.GL_BUFFER_UPDATE_BARRIER_BIT),
+        BufferUpdate,
         /**
          * Writes of buffer objects via the GL_QUERY_BUFFER binding after the
          * barrier will reflect data written by shaders prior to the barrier.
@@ -111,14 +135,14 @@ public class MemoryBarrierBits {
          * barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        QuerBuffer(GL4.GL_QUERY_BUFFER_BARRIER_BIT),
+        QueryBuffer,
         /**
          * Access by the client to persistent mapped regions of buffer objects
          * will reflect data written by shaders prior to the barrier. Note that
          * this may cause additional synchronization operations.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        ClientMappedBuffer(GL4.GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT),
+        ClientMappedBuffer,
         /**
          * Reads and writes via framebuffer object attachments after the barrier
          * will reflect data written by shaders prior to the barrier.
@@ -126,7 +150,7 @@ public class MemoryBarrierBits {
          * on the completion of all shader writes issued prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        FrameBuffer(GL4.GL_FRAMEBUFFER_BARRIER_BIT),
+        FrameBuffer,
         /**
          * <b>Currently not supported by the engine</b> Writes via transform
          * feedback bindings after the barrier will reflect data written by
@@ -135,68 +159,20 @@ public class MemoryBarrierBits {
          * writes issued prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        TransformFeedback(GL4.GL_TRANSFORM_FEEDBACK_BARRIER_BIT),
+        TransformFeedback,
         /**
          * Accesses to atomic counters after the barrier will reflect writes
          * prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        AtomicCounter(GL4.GL_ATOMIC_COUNTER_BARRIER_BIT),
+        AtomicCounter,
         /**
          * Accesses to shader storage blocks after the barrier will reflect
          * writes prior to the barrier.
          * (https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml)
          */
-        ShaderStorage(GL4.GL_SHADER_STORAGE_BARRIER_BIT);
-
-        private final int GL_CONST;
-
-        private MemoryBarrierBit(int cons) {
-            GL_CONST = cons;
-        }
-
-        public int getGlConstant() {
-            return GL_CONST;
-        }
+        ShaderStorage;
     }
 
-    /**
-     * Creates a MemoryBarrierBits instance from the given MemoryBarrierBit
-     * flags
-     *
-     * @param bits the barrier bits to combine
-     * @return the MemoryBarrierBits instance representing a barrier with
-     * specified flags
-     */
-    public static MemoryBarrierBits from(MemoryBarrierBit... bits) {
-        int b = 0;
-        if (bits != null) {
-            for (MemoryBarrierBit bit : bits) {
-                b |= bit.getGlConstant();
-            }
-        }
-        return new MemoryBarrierBits(b);
-    }
-
-    public static final MemoryBarrierBits NONE = from();
-    public static final MemoryBarrierBits ALL = from(MemoryBarrierBit.All);
-    public static final MemoryBarrierBits SHADER_IMAGE_ACCESS = from(MemoryBarrierBit.ShaderImageAccess);
-    public static final MemoryBarrierBits SHADER_STORAGE = from(MemoryBarrierBit.ShaderStorage);
-    public static final MemoryBarrierBits CLIENT_MAPPED_BUFFER = from(MemoryBarrierBit.ClientMappedBuffer);
-
-    private final int BITS;
-
-    private MemoryBarrierBits(int bits) {
-        BITS = bits;
-    }
-
-    /**
-     * Returns the bits representing the specified barriers
-     *
-     * @return
-     */
-    public int getBits() {
-        return BITS;
-    }
-
-}
+    public boolean has(Flag flag);
+} 

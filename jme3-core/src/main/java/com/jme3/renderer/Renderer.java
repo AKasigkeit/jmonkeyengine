@@ -34,13 +34,13 @@ package com.jme3.renderer;
 import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
-import com.jme3.buffer.UntypedBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.MemoryBarrierBits;
+import com.jme3.buffer.UntypedBuffer; 
 import com.jme3.conditional.GpuQuery;
 import com.jme3.conditional.SyncObject;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.shader.BufferObject;
@@ -533,7 +533,15 @@ public interface Renderer {
      * 
      * @param barrierBits the barriers to set 
      */
-    public void memoryBarrier(MemoryBarrierBits barrierBits);
+    public void placeMemoryBarrier(MemoryBarrier barrierBits);
+    
+    /**
+     * Creates a MemoryBarrier based on the provided flags.
+     * 
+     * @param flags the flags to use for the barrier
+     * @return a MemoryBarrier object representing the requested barrier
+     */
+    public MemoryBarrier createMemoryBarrier(MemoryBarrier.Flag... flags);
     
     /**
      * Updates the buffers state on the GPU to reflect the state on the CPU.

@@ -8,9 +8,6 @@ package jme3test.buffers;
 import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.ShaderStorageBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory;
-import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.Material;
 import com.jme3.math.Vector3f;
 import com.jme3.post.SceneProcessor;
@@ -19,6 +16,8 @@ import com.jme3.profile.SpStep;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.shape.Quad;
@@ -86,8 +85,7 @@ public class TestShaderStorageBufferNested extends SimpleApplication {
         geo.setLocalScale(cam.getWidth(), cam.getHeight(), 1);
         guiNode.attachChild(geo);
 
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
-        raytracer = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+        raytracer = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
         raytracer.setDefine("LOCAL_SIZE_X", VarType.Int, 32);
         raytracer.setDefine("LOCAL_SIZE_Y", VarType.Int, 32);
         raytracer.setDefine("NUM_SPHERES", VarType.Int, NUM_SPHERES);
@@ -102,12 +100,14 @@ public class TestShaderStorageBufferNested extends SimpleApplication {
 
     private class Processor implements SceneProcessor {
 
+        private MemoryBarrier barrier = null;
         private boolean init = false;
         private AppProfiler prof = null;
         float time = 0f;
 
         @Override
         public void initialize(RenderManager rm, ViewPort vp) {
+            barrier = rm.getRenderer().createMemoryBarrier(MemoryBarrier.Flag.All);
             init = true;
         }
 
@@ -137,7 +137,7 @@ public class TestShaderStorageBufferNested extends SimpleApplication {
             }
             int width = cam.getWidth() / 4;
             int height = cam.getHeight() / 4;
-            raytracer.run(width, height, 32, 32, MemoryBarrierBits.ALL);
+            raytracer.run(width, height, 32, 32, barrier);
 
         }
 

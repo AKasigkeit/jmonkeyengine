@@ -6,12 +6,10 @@
 package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
-import com.jme3.buffer.AtomicCounterBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory;
-import com.jme3.compute.MemoryBarrierBits;
-import com.jme3.compute.MemoryBarrierBits.MemoryBarrierBit;
+import com.jme3.buffer.AtomicCounterBuffer; 
 import com.jme3.material.Material;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.shape.Box;
 import com.jme3.shader.VarType;
@@ -45,12 +43,13 @@ public class TestAtomicCounterBuffer extends SimpleApplication {
         mat.setTexture("ColorMap", tex);
         geo.setMaterial(mat);
         rootNode.attachChild(geo);
-
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
-        ComputeShader shader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+ 
+        ComputeShader shader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
         shader.setAtomicCouterBuffer("Counter", acBuffer);
         shader.setImage("Output", VarType.Texture2D, tex, Texture.Access.WriteOnly, 0, -1, true);
-        shader.run(512, 512, 32, 32, MemoryBarrierBits.from(MemoryBarrierBit.TextureFetch));
+        
+        MemoryBarrier barrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.TextureFetch);
+        shader.run(512, 512, 32, 32, barrier);
         
         flyCam.setMoveSpeed(10f);
     }

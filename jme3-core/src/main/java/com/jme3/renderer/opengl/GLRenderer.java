@@ -38,10 +38,7 @@ import com.jme3.buffer.FieldBuffer;
 import com.jme3.buffer.ParameterBuffer;
 import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
-import com.jme3.buffer.UntypedBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.MemoryBarrierBits;
-import com.jme3.compute.TexImgParam;
+import com.jme3.buffer.UntypedBuffer; 
 import com.jme3.conditional.GpuQuery;
 import com.jme3.conditional.SyncObject;
 import com.jme3.material.MatParam;
@@ -56,6 +53,9 @@ import com.jme3.renderer.*;
 import com.jme3.renderer.RenderContext.BufferBinding;
 import com.jme3.renderer.RenderContext.ImageBinding;
 import com.jme3.renderer.RenderContext.TextureBinding;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
+import com.jme3.renderer.compute.TexImgParam;
 import com.jme3.scene.LastVaoState;
 import com.jme3.scene.LastVaoState.VertexAttributePointer;
 import com.jme3.scene.Mesh;
@@ -4011,11 +4011,20 @@ public final class GLRenderer implements Renderer {
     }
 
     @Override
-    public void memoryBarrier(MemoryBarrierBits barrierBits) {
-        if (barrierBits.getBits() == 0) {
+    public void placeMemoryBarrier(MemoryBarrier barrier) {
+        if (barrier == null) {
+            return;
+        } 
+        GLMemoryBarrier b = (GLMemoryBarrier)barrier;
+        if (b.getBits() == 0) {
             return;
         }
-        gl4.glMemoryBarrier(barrierBits.getBits());
+        gl4.glMemoryBarrier(b.getBits());
+    }
+    
+    @Override
+    public MemoryBarrier createMemoryBarrier(MemoryBarrier.Flag... flags) {
+        return new GLMemoryBarrier(flags);
     }
 
     @Override
@@ -4709,5 +4718,67 @@ public final class GLRenderer implements Renderer {
                 return arrSize == 1 ? BlockVarType.Mat4 : BlockVarType.Mat4Array;
         }
         return null;
+    }
+    
+    private static class GLMemoryBarrier implements MemoryBarrier {
+
+        private final int BITS;
+
+        private GLMemoryBarrier(MemoryBarrier.Flag[] flags) {
+            int bits = 0;
+            if (flags != null) {
+                for (MemoryBarrier.Flag flag : flags) {
+                    bits |= flag == null ? 0 : convertMemoryBarrierBit(flag);
+                }
+            }
+            BITS = bits;
+        }
+
+        @Override
+        public boolean has(MemoryBarrier.Flag flag) {
+            return (BITS & convertMemoryBarrierBit(flag)) != 0;
+        }
+
+        public int getBits() {
+            return BITS;
+        }
+
+        private int convertMemoryBarrierBit(MemoryBarrier.Flag bit) {
+            switch (bit) {
+                case All:
+                    return GL4.GL_ALL_BARRIER_BITS;
+                case VertexAttribArray:
+                    return GL4.GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+                case ElementArray:
+                    return GL4.GL_ELEMENT_ARRAY_BARRIER_BIT;
+                case Uniform:
+                    return GL4.GL_UNIFORM_BARRIER_BIT;
+                case TextureFetch:
+                    return GL4.GL_TEXTURE_FETCH_BARRIER_BIT;
+                case ShaderImageAccess:
+                    return GL4.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                case Command:
+                    return GL4.GL_COMMAND_BARRIER_BIT;
+                case PixelBuffer:
+                    return GL4.GL_PIXEL_BUFFER_BARRIER_BIT;
+                case TextureUpdate:
+                    return GL4.GL_TEXTURE_UPDATE_BARRIER_BIT;
+                case BufferUpdate:
+                    return GL4.GL_BUFFER_UPDATE_BARRIER_BIT;
+                case QueryBuffer:
+                    return GL4.GL_QUERY_BUFFER_BARRIER_BIT;
+                case ClientMappedBuffer:
+                    return GL4.GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
+                case FrameBuffer:
+                    return GL4.GL_FRAMEBUFFER_BARRIER_BIT;
+                case TransformFeedback:
+                    return GL4.GL_TRANSFORM_FEEDBACK_BARRIER_BIT;
+                case AtomicCounter:
+                    return GL4.GL_ATOMIC_COUNTER_BARRIER_BIT;
+                case ShaderStorage:
+                    return GL4.GL_SHADER_STORAGE_BARRIER_BIT;
+            }
+            throw new IllegalArgumentException("Unknown MemoryBarrierBit: " + bit);
+        }
     }
 }

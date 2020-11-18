@@ -5,13 +5,13 @@
  */
 package jme3test.compute;
 
-import com.jme3.app.SimpleApplication;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory; 
-import com.jme3.compute.MemoryBarrierBits;
+import com.jme3.app.SimpleApplication; 
 import com.jme3.material.Material;
 import com.jme3.math.Vector4f;
 import com.jme3.renderer.Caps;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
+import com.jme3.renderer.compute.WorkGroupSizes;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
@@ -35,7 +35,7 @@ public class ComputeShaderTestInversion extends SimpleApplication {
         test.start();
     }
     
-    private ComputeShader shader;
+    private ComputeShader shader; 
     int width, height, localSizeX, localSizeY;
 
     @Override
@@ -52,8 +52,7 @@ public class ComputeShaderTestInversion extends SimpleApplication {
             stop();
             return;
         }
-        
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
+         
 
         Texture orig = assetManager.loadTexture("Textures/Terrain/splat/dirt.jpg");
         orig.setAnisotropicFilter(0);
@@ -86,17 +85,18 @@ public class ComputeShaderTestInversion extends SimpleApplication {
         rootNode.attachChild(geoEdit);
         
         //get maximum local sizes for dimensions x and y, considering this is a 2D problem
-        localSizeX = factory.getMaxLocalSize2D()[0];
-        localSizeY = factory.getMaxLocalSize2D()[1];
+        WorkGroupSizes workGroups = new WorkGroupSizes(renderer);
+        localSizeX = workGroups.getMaxLocalSize(2, 1, true);
+        localSizeY = workGroups.getMaxLocalSize(2, 2, true);
         //setup the shader
-        shader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+        shader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
         shader.setDefine("LOCAL_SIZE_X", VarType.Int, localSizeX);
         shader.setDefine("LOCAL_SIZE_Y", VarType.Int, localSizeY);
         shader.setTexture("Input", VarType.Texture2D, orig);
         shader.setImage("Output", VarType.Texture2D, edit, Texture.Access.WriteOnly, 0, -1, true);
         shader.setVector4("Shift", new Vector4f(-0.5f, -0.5f, -0.5f, -0.5f));
         
-        shader.run(width, height, localSizeX, localSizeY, MemoryBarrierBits.ALL);
+        shader.run(width, height, localSizeX, localSizeY, renderer.createMemoryBarrier(MemoryBarrier.Flag.All));
     }
 
     //To keep the example a single file, the shader source is kept here as a string

@@ -1,10 +1,37 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (c) 2009-2020 jMonkeyEngine
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ * 
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * 
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * 
+ * * Neither the name of 'jMonkeyEngine' nor the names of its contributors
+ *   may be used to endorse or promote products derived from this software
+ *   without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.jme3.compute;
+package com.jme3.renderer.compute;
 
+import com.jme3.asset.AssetManager;
 import com.jme3.buffer.AtomicCounterBuffer;
 import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.buffer.ShaderStorageBuffer;
@@ -16,6 +43,8 @@ import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.math.Vector4f;
+import com.jme3.renderer.Caps;
+import com.jme3.renderer.Renderer;
 import com.jme3.shader.Shader;
 import com.jme3.shader.VarType;
 import com.jme3.shader.layout.BlockLayout;
@@ -24,8 +53,6 @@ import com.jme3.texture.Texture;
 import com.jme3.texture.Texture.Access;
 import com.jme3.util.ListMap;
 import com.jme3.util.SafeArrayList;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map.Entry;
 
 /**
@@ -36,12 +63,49 @@ import java.util.Map.Entry;
  */
 public class ComputeShader {
 
-    private final ComputeShaderFactory FACTORY;
+    /**
+     * Creates a new ComputeShader from the provided string.
+     *
+     * @param renderer Renderer used for internal operations
+     * @param source the source code of the compute shader
+     * @param language the language of the source code
+     * @return a new ComputeShader
+     */
+    public static ComputeShader createFromString(Renderer renderer, String source, String language) {
+        return new ComputeShader(renderer, source, language);
+    }
+
+    /**
+     * Creates a new ComputeShader from a file. Note that glsl430 will be
+     * assumed as the language.
+     *
+     * @param renderer Renderer used for internal operations
+     * @param assetManager Needed to load the file
+     * @param path path to the file
+     * @return a new ComputeShader
+     */
+    public static ComputeShader createFromFile(Renderer renderer, AssetManager assetManager, String path) {
+        return new ComputeShader(renderer, assetManager, path, "GLSL430");
+    }
+
+    /**
+     * Creates a new ComputeShader from a file.
+     *
+     * @param renderer Renderer used for internal operations
+     * @param assetManager Needed to load the file
+     * @param path path to the file
+     * @param language language of the source code
+     * @return a new ComputeShader
+     */
+    public static ComputeShader createFromFile(Renderer renderer, AssetManager assetManager, String path, String language) {
+        return new ComputeShader(renderer, assetManager, path, language);
+    }
+
+    private final Renderer RENDERER;
     private final String SOURCE, LANGUAGE;
     private final String SOURCE_LOC;
 
     private Shader shader = null;
-    private final List<String> BUFFER_DEFINITIONS = new ArrayList<>(4);
 
     private final ListMap<String, TexImgParam> TEXTURES = new ListMap<>();
     private final ListMap<String, Define> DEFINES = new ListMap<>();
@@ -52,10 +116,24 @@ public class ComputeShader {
     private final StringBuilder SB = new StringBuilder(128);
 
     private boolean definesChanged = true;
+
     private final int[] localWorkGroupSize = new int[]{-1, 0, 0}; //-1 marks we didnt look it up yet
 
-    protected ComputeShader(ComputeShaderFactory factory, String source, String language, String sourceLoc) {
-        FACTORY = factory;
+    public ComputeShader(Renderer renderer, AssetManager assetManager, String path, String language) {
+        this(renderer, (String) assetManager.loadAsset(path), language, path);
+    }
+
+    public ComputeShader(Renderer renderer, String source, String language) {
+        this(renderer, source, language, "InApp");
+    }
+
+    protected ComputeShader(Renderer renderer, String source, String language, String sourceLoc) {
+        if (renderer == null || source == null || language == null || sourceLoc == null) {
+            throw new IllegalArgumentException("none of the arguments can be null");
+        } else if (!renderer.getCaps().contains(Caps.ComputeShader)) {
+            throw new UnsupportedOperationException("Hardware doesn't support ComputeShaders");
+        }
+        RENDERER = renderer;
         SOURCE = source;
         LANGUAGE = language;
         SOURCE_LOC = sourceLoc;
@@ -339,11 +417,20 @@ public class ComputeShader {
     }
 
     /**
-     * Removes a texture or image from the shader
+     * Removes a texture from the shader
      *
-     * @param name name of the texture or image to remove
+     * @param name name of texture to remove
      */
-    public void removeTextureOrImage(String name) {
+    public void removeTexture(String name) {
+        TEXTURES.remove(name);
+    }
+
+    /**
+     * Removes an image from the shader
+     *
+     * @param name name of image to remove
+     */
+    public void removeImage(String name) {
         TEXTURES.remove(name);
     }
 
@@ -376,7 +463,7 @@ public class ComputeShader {
      */
     public void queryLayouts() {
         createIfNeeded();
-        FACTORY.queryLayouts(this);
+        RENDERER.queryBlockLayouts(this);
     }
 
     /**
@@ -391,8 +478,7 @@ public class ComputeShader {
     }
 
     /**
-     * Returns the UniformBuffer LayoutBlock related to the specified
-     * name.
+     * Returns the UniformBuffer LayoutBlock related to the specified name.
      *
      * @param name name of the Block to query Layout of
      * @return blocklayout
@@ -412,23 +498,6 @@ public class ComputeShader {
     }
 
     /**
-     * Runs this ComputeShader with the specified number of work groups. None of
-     * the values can be smaller than 1. Take into account this is the number of
-     * work groups, not the number of single invocations. If the ComputeShader
-     * specifies a local size of x = 16 and y = 16, then running a total of
-     * 256x256 invocations requires a call to this method with values run(256 /
-     * 16, 256 / 16, 1);<br>
-     * <b>Does not set any memory barriers</b>
-     *
-     * @param x number of <b>work groups</b> in x dimension
-     * @param y number of <b>work groups</b> in y dimension
-     * @param z number of <b>work groups</b> in z dimension
-     */
-    public void run(int x, int y, int z) {
-        run(x, y, z, MemoryBarrierBits.NONE);
-    }
-
-    /**
      * Runs this ComputeShader with the work group counts calculated by ceiling
      * the result of calculating total over local sizes.That guarantees there is
      * always enough invocations to cover the specified total problem size,
@@ -441,7 +510,7 @@ public class ComputeShader {
      * @param localY local size of the compute shader in y dimension
      * @param memBarrier memory barriers to set
      */
-    public void run(int totalX, int totalY, int localX, int localY, MemoryBarrierBits memBarrier) {
+    public void run(int totalX, int totalY, int localX, int localY, MemoryBarrier memBarrier) {
         int x = (int) Math.ceil(totalX / (double) localX);
         int y = (int) Math.ceil(totalY / (double) localY);
         run(x, y, 1, memBarrier);
@@ -458,7 +527,7 @@ public class ComputeShader {
      * @param localX local size of the compute shader in x dimension
      * @param memBarrier memory barriers to set
      */
-    public void run(int totalX, int localX, MemoryBarrierBits memBarrier) {
+    public void run(int totalX, int localX, MemoryBarrier memBarrier) {
         int x = (int) Math.ceil(totalX / (double) localX);
         run(x, 1, 1, memBarrier);
     }
@@ -478,7 +547,7 @@ public class ComputeShader {
      * @param localZ local size of the compute shader in z dimension
      * @param memBarrier memory barriers to set
      */
-    public void run(int totalX, int totalY, int totalZ, int localX, int localY, int localZ, MemoryBarrierBits memBarrier) {
+    public void run(int totalX, int totalY, int totalZ, int localX, int localY, int localZ, MemoryBarrier memBarrier) {
         int x = (int) Math.ceil(totalX / (double) localX);
         int y = (int) Math.ceil(totalY / (double) localY);
         int z = (int) Math.ceil(totalZ / (double) localZ);
@@ -491,13 +560,14 @@ public class ComputeShader {
      * @param command the DispatchCommand containing the work group counts
      * @param memBarrier the memory barrier to set
      */
-    public void run(DispatchCommand command, MemoryBarrierBits memBarrier) {
+    public void run(DispatchCommand command, MemoryBarrier memBarrier) {
         run(command.getNumGroupsX(), command.getNumGroupsY(), command.getNumGroupsZ(), memBarrier);
     }
 
-    public void run(DispatchIndirectBuffer buffer, int offset, MemoryBarrierBits memBarrier) {
+    public void run(DispatchIndirectBuffer buffer, int offset, MemoryBarrier memBarrier) {
         createIfNeeded();
-        FACTORY.run(this, buffer, offset, memBarrier);
+        RENDERER.runComputeShader(this, buffer, offset);
+        RENDERER.placeMemoryBarrier(memBarrier);
     }
 
     /**
@@ -514,41 +584,21 @@ public class ComputeShader {
      * @param z number of <b>work groups</b> in z dimension
      * @param memBarrier barrier bits to set
      */
-    public void run(int x, int y, int z, MemoryBarrierBits memBarrier) {
+    public void run(int x, int y, int z, MemoryBarrier memBarrier) {
         createIfNeeded();
-        FACTORY.run(this, x, y, z, memBarrier);
+        RENDERER.runComputeShader(this, x, y, z);
+        RENDERER.placeMemoryBarrier(memBarrier);
     }
 
     private void createIfNeeded() {
         if (shader == null || definesChanged) {//first time or defines changed, update shader  
-            int hash = 31 * DEFINES.hashCode() + BUFFER_DEFINITIONS.hashCode();
+            int hash = 31 * DEFINES.hashCode();
             Shader newShader = null;
             String def = null;
-            String bufferDefinitions = null;
             for (CompiledShader cs : COMPILED_SHADERS.getArray()) {
                 if (cs.hash != hash) {
                     continue; //if hashes dont equal, skip right away
                 }
-                if (!BUFFER_DEFINITIONS.isEmpty()) {
-                    if (cs.bufferDefinitions == null) {
-                        continue; //if we got buffer definitons and cached version doesnt, skip
-                    }
-                    if (bufferDefinitions == null) { //in case we havent created our definitions, create them
-                        SB.setLength(0);
-                        for (int i = 0; i < BUFFER_DEFINITIONS.size(); i++) {
-                            SB.append(BUFFER_DEFINITIONS.get(i));
-                        }
-                        bufferDefinitions = SB.toString();
-                    }
-                    if (!bufferDefinitions.equals(cs.bufferDefinitions)) {
-                        continue;
-                    }
-                } else {
-                    if (!cs.bufferDefinitions.isEmpty()) {
-                        continue; //if we got no buffer definitions but the cached version does, skip
-                    }
-                }
-                //ok so buffer definitions are the same
                 if (def == null) {
                     def = createDefines();
                 }
@@ -563,21 +613,13 @@ public class ComputeShader {
                 if (def == null) {
                     def = createDefines();
                 }
-                if (bufferDefinitions == null) {
-                    SB.setLength(0);
-                    for (int i = 0; i < BUFFER_DEFINITIONS.size(); i++) {
-                        SB.append(BUFFER_DEFINITIONS.get(i));
-                    }
-                    bufferDefinitions = SB.toString();
-                }
                 String name = SOURCE_LOC == null ? "InApp" : SOURCE_LOC;
 
-                String source = bufferDefinitions + "\n" + SOURCE;
+                String source = SOURCE;
                 newShader = new Shader();
                 newShader.addSource(Shader.ShaderType.Compute, name, source, def, LANGUAGE);
                 CompiledShader cs = new CompiledShader();
                 cs.hash = hash;
-                cs.bufferDefinitions = bufferDefinitions;
                 cs.definitions = def;
                 cs.shader = newShader;
                 COMPILED_SHADERS.add(cs);
@@ -606,9 +648,9 @@ public class ComputeShader {
         if (localWorkGroupSize[0] == -1) {
             createIfNeeded();
             if (shader.getId() < 0) {
-                FACTORY.setShader(this);
+                RENDERER.setShader(getShader());
             }
-            FACTORY.getLocalWorkGroupSize(this, localWorkGroupSize);
+            RENDERER.getLocalWorkGroupSize(this, localWorkGroupSize);
         }
         store[0] = localWorkGroupSize[0];
         store[1] = localWorkGroupSize[1];
@@ -706,15 +748,6 @@ public class ComputeShader {
             case Int:
                 Integer i = (Integer) value;
                 return sb.append(Integer.valueOf(i));
-//          not sure if those make sence
-//            case Matrix3:
-//            case Matrix4:
-//            case IntArray:
-//            case FloatArray:
-//            case Vector2Array:
-//            case Vector3Array:
-//            case Vector4Array:
-//            case Matrix4Array:
             default:
                 throw new UnsupportedOperationException("Unsupported uniform type: " + type);
         }
@@ -724,7 +757,6 @@ public class ComputeShader {
 
         private Shader shader = null;
         private String definitions = null;
-        private String bufferDefinitions = null;
         private int hash = -1;
 
     }

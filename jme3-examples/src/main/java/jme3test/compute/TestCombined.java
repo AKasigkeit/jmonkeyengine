@@ -5,22 +5,15 @@
  */
 package jme3test.compute;
 
-import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.bounding.BoundingBox;
 import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.buffer.DrawIndirectBuffer;
 import com.jme3.buffer.DrawIndirectBuffer.DrawIndicesCommand;
-import com.jme3.buffer.FieldBuffer;
-import com.jme3.buffer.FieldBuffer.FieldBufferWriter;
 import com.jme3.buffer.ShaderStorageBuffer;
 import com.jme3.buffer.UntypedBuffer;
 import com.jme3.buffer.UntypedBuffer.MemoryMode;
 import com.jme3.buffer.UntypedBuffer.StorageFlag;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory;
-import com.jme3.compute.DispatchCommand;
-import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.conditional.GpuQuery;
 import com.jme3.font.BitmapText;
 import com.jme3.material.Material;
@@ -32,6 +25,9 @@ import com.jme3.profile.SpStep;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.DispatchCommand;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
@@ -47,8 +43,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
-import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL20;
 
 /**
  *
@@ -78,18 +72,19 @@ public class TestCombined extends SimpleApplication {
     private DispatchIndirectBuffer dispatchBuffer;
     private Geometry geo;
     private BitmapText text;
+    private MemoryBarrier memoryBarrier;
 
     @Override
     public void simpleInitApp() {
         if (!renderer.getCaps().containsAll(Arrays.asList(Caps.ComputeShader, Caps.MultiDrawIndirect))) {
             throw new UnsupportedOperationException("Hardware doesnt support required features");
         }
-        //create compute shader
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
-        compShader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+        //create compute shader 
+        compShader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
         compShader.setDefine("LOCAL_SIZE_X", VarType.Int, 1024);
         compShader.setDefine("HALF_WORLD", VarType.Float, WORLD_SIZE / 2f);
         dispatchBuffer = DispatchIndirectBuffer.createWithCommand(new DispatchCommand((int) (Math.ceil(NUM_INSTANCES / 1024.0)), 1, 1));
+        memoryBarrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.All);
 
         //read layout data
         compShader.queryLayouts();
@@ -218,7 +213,7 @@ public class TestCombined extends SimpleApplication {
             }
             compShader.setFloat("TPF", tpf * 2f);
             compShader.setFloat("Time", time);
-            compShader.run(dispatchBuffer, 0, MemoryBarrierBits.ALL);
+            compShader.run(dispatchBuffer, 0, memoryBarrier);
         }
 
         private long samples = 0L;
@@ -246,7 +241,7 @@ public class TestCombined extends SimpleApplication {
         }
 
         @Override
-        public void postFrame(FrameBuffer out) { 
+        public void postFrame(FrameBuffer out) {
             //GL13.glActiveTexture(123123123); // remove comment to trigger gl error
         }
 

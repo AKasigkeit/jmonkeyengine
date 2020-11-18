@@ -8,14 +8,13 @@ package jme3test.buffers;
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.ShaderStorageBuffer;
 import com.jme3.buffer.UntypedBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory;
-import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.Caps;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Spatial;
@@ -40,17 +39,18 @@ public class TestBlockLayout extends SimpleApplication {
     }
 
     private ComputeShader shader = null;
-
+    private MemoryBarrier barrier = null;
+    
     @Override
     public void simpleInitApp() {
         if (!renderer.getCaps().contains(Caps.ComputeShader)) {
             System.out.println("Hardware does not support ComputeShaders");
         }
-        
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
-        shader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+         
+        shader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
         shader.setDefine("NUM_VERTS", VarType.Int, 4);
-
+        barrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.All);
+        
         shader.queryLayouts();
         StructNode tree = shader.getShaderStorageBufferLayout("Vertices").getTreeView();
         StructNode vertsNode = tree.getChild("vertexData");
@@ -99,7 +99,7 @@ public class TestBlockLayout extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         shader.setFloat("TPF", tpf);
-        shader.run(4, 4, MemoryBarrierBits.ALL);
+        shader.run(4, 4, barrier);
     }
 
     private static class Vertex implements Struct {

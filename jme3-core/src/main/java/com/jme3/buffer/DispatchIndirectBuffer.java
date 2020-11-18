@@ -7,7 +7,7 @@ package com.jme3.buffer;
 
 import com.jme3.buffer.UntypedBuffer.BufferDataUsage;
 import com.jme3.buffer.UntypedBuffer.MemoryMode;
-import com.jme3.compute.DispatchCommand;
+import com.jme3.renderer.compute.DispatchCommand;
 import com.jme3.util.BufferUtils;
 import java.nio.ByteBuffer;
 
@@ -18,7 +18,7 @@ import java.nio.ByteBuffer;
 public class DispatchIndirectBuffer extends TypedBuffer {
 
     /**
-     * Creates a new DIspatchIndirectBuffer containing the specified
+     * Creates a new DispatchIndirectBuffer containing the specified
      * DispatchCommand.
      *
      * @param cmd the command to contain

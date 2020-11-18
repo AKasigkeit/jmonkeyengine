@@ -34,9 +34,7 @@ package com.jme3.system;
 import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.buffer.QueryBuffer;
 import com.jme3.buffer.TypedBuffer;
-import com.jme3.buffer.UntypedBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.MemoryBarrierBits;
+import com.jme3.buffer.UntypedBuffer; 
 import com.jme3.conditional.GpuQuery;
 import com.jme3.conditional.SyncObject;
 import com.jme3.light.LightList;
@@ -47,6 +45,8 @@ import com.jme3.renderer.Caps;
 import com.jme3.renderer.Limits;
 import com.jme3.renderer.Renderer;
 import com.jme3.renderer.Statistics;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.shader.BufferObject;
@@ -293,7 +293,12 @@ public class NullRenderer implements Renderer {
     }
 
     @Override
-    public void memoryBarrier(MemoryBarrierBits barrierBits) { 
+    public void placeMemoryBarrier(MemoryBarrier barrierBits) { 
+    }
+    
+    @Override
+    public MemoryBarrier createMemoryBarrier(MemoryBarrier.Flag... flags) {
+        return null;
     }
 
     @Override

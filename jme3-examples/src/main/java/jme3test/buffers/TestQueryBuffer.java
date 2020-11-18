@@ -13,8 +13,6 @@ import com.jme3.buffer.ShaderStorageBuffer;
 import com.jme3.buffer.UntypedBuffer;
 import com.jme3.buffer.UntypedBuffer.MemoryMode;
 import com.jme3.buffer.UntypedBuffer.StorageFlag;
-import com.jme3.compute.MemoryBarrierBits;
-import com.jme3.compute.MemoryBarrierBits.MemoryBarrierBit;
 import com.jme3.conditional.GpuQuery;
 import com.jme3.material.Material;
 import com.jme3.post.SceneProcessor;
@@ -22,6 +20,7 @@ import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.compute.MemoryBarrier;
 import com.jme3.renderer.queue.GeometryList;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
@@ -91,7 +90,7 @@ public class TestQueryBuffer extends SimpleApplication {
 
     private class QuerySceneProcessor implements SceneProcessor {
 
-        private final MemoryBarrierBits MEM = MemoryBarrierBits.from(MemoryBarrierBit.QuerBuffer);
+        private MemoryBarrier mem;
         private IntMap<GpuQuery> queriesMap = new IntMap<>();
         private IntMap<GpuQuery> queriesMapLast = new IntMap<>();
         private boolean first = true;
@@ -127,7 +126,7 @@ public class TestQueryBuffer extends SimpleApplication {
                 }
             }
 
-            renderManager.getRenderer().memoryBarrier(MEM);
+            renderManager.getRenderer().placeMemoryBarrier(mem);
             opaque.clear();
 
             first = !first;
@@ -138,6 +137,7 @@ public class TestQueryBuffer extends SimpleApplication {
 
         @Override
         public void initialize(RenderManager rm, ViewPort vp) {
+            mem = rm.getRenderer().createMemoryBarrier(MemoryBarrier.Flag.All);
             init = true;
         }
 

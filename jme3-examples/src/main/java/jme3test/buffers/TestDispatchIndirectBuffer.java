@@ -7,12 +7,12 @@ package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.DispatchIndirectBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory;
-import com.jme3.compute.DispatchCommand;
-import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.Material;
 import com.jme3.renderer.Caps;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.DispatchCommand;
+import com.jme3.renderer.compute.MemoryBarrier;
+import com.jme3.renderer.compute.WorkGroupSizes;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
@@ -34,6 +34,7 @@ public class TestDispatchIndirectBuffer extends SimpleApplication {
 
     private float time = 0f;
     private ComputeShader shader = null;
+    private MemoryBarrier barrier = null;
     private DispatchIndirectBuffer dispatchBuffer = null;
 
     @Override
@@ -49,12 +50,12 @@ public class TestDispatchIndirectBuffer extends SimpleApplication {
         //create a box just to show the texture on the screen
         rootNode.attachChild(createTestGeo(tex));
 
-        //create shader
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
-        shader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+        //create shader 
+        shader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
 
-        int localSizeX = factory.getMaxLocalSize2D()[0];
-        int localSizeY = factory.getMaxLocalSize2D()[1];
+        WorkGroupSizes workGroupSizes = new WorkGroupSizes(renderer);
+        int localSizeX = workGroupSizes.getMaxLocalSize(2, 1, true);
+        int localSizeY = workGroupSizes.getMaxLocalSize(2, 2, true);
         shader.setDefine("LOCAL_SIZE_X", VarType.Int, localSizeX);
         shader.setDefine("LOCAL_SIZE_Y", VarType.Int, localSizeY);
         shader.setImage("Image", VarType.Texture2D, tex, Texture.Access.WriteOnly, 0, -1, true);
@@ -63,13 +64,14 @@ public class TestDispatchIndirectBuffer extends SimpleApplication {
         int groupsY = (int) (Math.ceil(height / (double) localSizeY));
         DispatchCommand command = new DispatchCommand(groupsX, groupsY, 1);
         dispatchBuffer = DispatchIndirectBuffer.createWithCommand(command);
+        barrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.ShaderImageAccess);
     }
 
     @Override
     public void simpleUpdate(float tpf) {
         time += tpf;
         shader.setUniform("Time", VarType.Float, time);
-        shader.run(dispatchBuffer, 0, MemoryBarrierBits.SHADER_IMAGE_ACCESS);
+        shader.run(dispatchBuffer, 0, barrier);
     }
 
     private static final String SHADER_SOURCE = ""

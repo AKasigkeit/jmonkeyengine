@@ -7,13 +7,13 @@ package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.UniformBuffer;
-import com.jme3.compute.ComputeShader;
-import com.jme3.compute.ComputeShaderFactory;
-import com.jme3.compute.MemoryBarrierBits;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
 import com.jme3.renderer.Caps;
+import com.jme3.renderer.compute.ComputeShader;
+import com.jme3.renderer.compute.MemoryBarrier;
+import com.jme3.renderer.compute.WorkGroupSizes;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
@@ -33,6 +33,7 @@ public class TestUniformBuffer extends SimpleApplication {
         t.start();
     }
 
+    private MemoryBarrier barrier = null;
     private ComputeShader shader = null;
     private float time = 0f;
     
@@ -55,12 +56,12 @@ public class TestUniformBuffer extends SimpleApplication {
         //create a box just to show the texture on the screen
         rootNode.attachChild(createTestGeo(tex));
 
-        //create shader
-        ComputeShaderFactory factory = ComputeShaderFactory.create(renderer);
-        shader = factory.createComputeShader(SHADER_SOURCE, "GLSL430");
+        //create shader 
+        shader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
 
-        localX = factory.getMaxLocalSize2D()[0];
-        localY = factory.getMaxLocalSize2D()[1];
+        WorkGroupSizes sizes = new WorkGroupSizes(renderer);
+        localX = sizes.getMaxLocalSize(2, 1, true);
+        localY = sizes.getMaxLocalSize(2, 2, true);
         shader.setDefine("LOCAL_SIZE_X", VarType.Int, localX);
         shader.setDefine("LOCAL_SIZE_Y", VarType.Int, localY);
         shader.setImage("Image", VarType.Texture2D, tex, Texture.Access.WriteOnly, 0, -1, true);
@@ -70,6 +71,8 @@ public class TestUniformBuffer extends SimpleApplication {
         buffer.setField("light_color", ColorRGBA.Yellow);
         buffer.setField("light_threshold", 0.4f);
         shader.setUniformBuffer("Light", buffer);
+        
+        barrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.All);
         
         flyCam.setMoveSpeed(20);
     }
@@ -81,8 +84,8 @@ public class TestUniformBuffer extends SimpleApplication {
         lightPos.setX((float)(Math.sin(System.currentTimeMillis() / 5000.0) + 1.0f) * 0.5f);
         lightPos.setY((float)(Math.cos(System.currentTimeMillis() / 5000.0) + 1.0f) * 0.5f);
         buffer.setField("light_pos", lightPos);
-        renderer.memoryBarrier(MemoryBarrierBits.ALL);
-        shader.run(width, height, localX, localY, MemoryBarrierBits.ALL);
+        renderer.placeMemoryBarrier(barrier);
+        shader.run(width, height, localX, localY, barrier);
     }
     
     private static final String SHADER_SOURCE = ""
