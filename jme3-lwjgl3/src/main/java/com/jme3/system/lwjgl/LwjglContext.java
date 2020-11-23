@@ -211,6 +211,14 @@ public abstract class LwjglContext implements JmeContext {
             glfbo = (GLFbo) GLDebug.createProxy(gl, glfbo, GLFbo.class);
             glip = (GLIp) GLDebug.createProxy(gl, glip, GLIp.class);
         }
+        
+        if (settings.getBoolean("GraphicsCounter")) {
+            Map<String, Integer> counter = new HashMap<>();
+            gl = (GL) GLCounter.createProxy(counter, gl, gl, GL.class, GL2.class, GL3.class, GL4.class);
+            glext = (GLExt) GLCounter.createProxy(counter, gl, glext, GLExt.class);
+            glfbo = (GLFbo) GLCounter.createProxy(counter, gl, glfbo, GLFbo.class);
+            glip = (GLIp) GLCounter.createProxy(counter, gl, glip, GLIp.class);
+        }
 
         if (settings.getBoolean("GraphicsTiming")) {
             GLTimingState timingState = new GLTimingState();

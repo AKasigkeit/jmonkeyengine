@@ -1223,6 +1223,26 @@ public final class AppSettings extends HashMap<String, Object> {
     public void setGraphicsDebug(boolean debug) {
         putBoolean("GraphicsDebug", debug);
     }
+    
+    /**
+     * Determine if the renderer will be counting all calls to the underlying graphics API.
+     * 
+     * @return whether the renderer will be counting all calls
+     * @see #setGraphicsCounter(boolean) 
+     */
+    public boolean isGraphicsCounter() {
+        return getBoolean("GraphicsCounter");
+    }
+    
+    /**
+     * Set whether the renderer will be counting all calls to the underlying graphics API.
+     * 
+     * @param counter whether the renderer will be counting all calls
+     * @see #isGraphicsCounter() 
+     */
+    public void setGraphicsCounter(boolean counter) {
+        putBoolean("GraphicsCounter", counter);
+    }
 
     /**
      * Determine if the renderer will be run in Graphics Timing mode, which means every openGL call is checked and
