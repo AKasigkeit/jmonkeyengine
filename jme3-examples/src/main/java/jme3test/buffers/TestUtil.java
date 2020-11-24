@@ -33,6 +33,7 @@ package jme3test.buffers;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.app.state.ScreenshotAppState;
+import com.jme3.font.BitmapText;
 import com.jme3.post.SceneProcessor;
 import com.jme3.profile.AppProfiler;
 import com.jme3.renderer.RenderManager;
@@ -51,12 +52,18 @@ public class TestUtil {
         private ScreenshotAppState screenshot = null;
         private float totalTime = 0f;
         private boolean done = false;
+        private BitmapText text = null;
+        private int frames = 0;
 
         @Override
         public void simpleInitApp() {
             screenshot = new ScreenshotAppState();
             screenshot.setIsNumbered(false);
             stateManager.attach(screenshot);
+            
+            text = new BitmapText(guiFont);
+            text.setLocalTranslation(0, cam.getHeight(), 0);
+            guiNode.attachChild(text);
         }
 
         @Override
@@ -70,6 +77,8 @@ public class TestUtil {
                 screenshot.takeScreenshot();
             }
             totalTime += tpf;
+            frames++;
+            text.setText("Frames: "+frames);
         }
 
     }
