@@ -5,9 +5,11 @@
  */
 package jme3test.buffers;
 
+import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.DispatchIndirectBuffer;
 import com.jme3.material.Material;
+import com.jme3.profile.SpStep;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.compute.ComputeShader;
 import com.jme3.renderer.compute.DispatchCommand;
@@ -25,7 +27,7 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class TestDispatchIndirectBuffer extends SimpleApplication {
+public class TestDispatchIndirectBuffer extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestDispatchIndirectBuffer t = new TestDispatchIndirectBuffer();
@@ -42,6 +44,7 @@ public class TestDispatchIndirectBuffer extends SimpleApplication {
         if (!renderer.getCaps().contains(Caps.ComputeShader)) {
             System.out.println("Hardware does not support ComputeShaders");
         }
+        super.simpleInitApp();
 
         //create texture to write to
         int width = 512, height = 512;
@@ -65,14 +68,21 @@ public class TestDispatchIndirectBuffer extends SimpleApplication {
         DispatchCommand command = new DispatchCommand(groupsX, groupsY, 1);
         dispatchBuffer = DispatchIndirectBuffer.createWithCommand(command);
         barrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.ShaderImageAccess);
+        
+        stateManager.attach(new DetailedProfilerState());
+        viewPort.addProcessor(new TimingProcessor());
     }
 
-    @Override
-    public void simpleUpdate(float tpf) {
-        time += tpf;
-        shader.setUniform("Time", VarType.Float, time);
-        shader.run(dispatchBuffer, 0, barrier);
-    }
+    private class TimingProcessor extends TestUtil.NullProcessor {
+
+        @Override
+        public void preFrame(float tpf) {
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame,getClass().getSimpleName(),  "compute shader");
+            time += tpf;
+            shader.setUniform("Time", VarType.Float, time);
+            shader.run(dispatchBuffer, 0, barrier);
+        }
+    } 
 
     private static final String SHADER_SOURCE = ""
             + "layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;\n"

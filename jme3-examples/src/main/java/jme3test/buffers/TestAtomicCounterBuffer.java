@@ -26,7 +26,7 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class TestAtomicCounterBuffer extends SimpleApplication {
+public class TestAtomicCounterBuffer extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestAtomicCounterBuffer t = new TestAtomicCounterBuffer();
@@ -35,6 +35,7 @@ public class TestAtomicCounterBuffer extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        super.simpleInitApp();
         AtomicCounterBuffer acBuffer = AtomicCounterBuffer.createWithInitialValues(0, 0);
         Texture2D tex = new Texture2D(512, 512, Image.Format.RGBA16F);
 

@@ -5,6 +5,7 @@
  */
 package jme3test.compute;
 
+import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.bounding.BoundingBox;
 import com.jme3.buffer.DispatchIndirectBuffer;
@@ -43,6 +44,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Random;
+import jme3test.buffers.TestUtil;
 
 /**
  *
@@ -54,17 +57,13 @@ import java.util.Deque;
  *
  * @author Alexander Kasigkeit <alexander.kasigkeit@web.de>
  */
-public class TestCombined extends SimpleApplication {
+public class TestCombined extends TestUtil.AutoScreenshotApp {
 
     private static final int NUM_INSTANCES = 1_000_000;
     private static final float WORLD_SIZE = 1500f;
 
     public static void main(String[] args) {
         TestCombined t = new TestCombined();
-        AppSettings s = new AppSettings(true);
-        s.setGraphicsDebug(true);
-        //s.setRenderer(AppSettings.LWJGL_OPENGL43);
-        t.setSettings(s);
         t.start();
     }
 
@@ -79,6 +78,7 @@ public class TestCombined extends SimpleApplication {
         if (!renderer.getCaps().containsAll(Arrays.asList(Caps.ComputeShader, Caps.MultiDrawIndirect))) {
             throw new UnsupportedOperationException("Hardware doesnt support required features");
         }
+        super.simpleInitApp();
         //create compute shader 
         compShader = ComputeShader.createFromString(renderer, SHADER_SOURCE, "GLSL430");
         compShader.setDefine("LOCAL_SIZE_X", VarType.Int, 1024);
@@ -141,10 +141,11 @@ public class TestCombined extends SimpleApplication {
 
         //now create some initial instances
         Instance[] instances = new Instance[NUM_INSTANCES];
+        Random r = new Random(1284762394L);
         for (int i = 0; i < instances.length; i++) {
             Instance inst = new Instance();
-            inst.translation = new Vector3f((float) Math.random(), (float) Math.random(), (float) Math.random()).multLocal(WORLD_SIZE).subtractLocal(WORLD_SIZE / 2f, WORLD_SIZE / 2f, WORLD_SIZE / 2f);
-            inst.scale = new Vector3f((float) Math.random(), (float) Math.random(), (float) Math.random());
+            inst.translation = new Vector3f(r.nextFloat(), r.nextFloat(), r.nextFloat()).multLocal(WORLD_SIZE).subtractLocal(WORLD_SIZE / 2f, WORLD_SIZE / 2f, WORLD_SIZE / 2f);
+            inst.scale = new Vector3f(r.nextFloat(), r.nextFloat(), r.nextFloat());
             instances[i] = inst;
         }
         ssbo.registerStruct(Instance.class);
@@ -156,8 +157,8 @@ public class TestCombined extends SimpleApplication {
         mesh.setDrawIndirectBuffer(dibo);
         mesh.setDrawIndirectParameters(0, 0, 1);
 
-        viewPort.addProcessor(new Processor());
-        //stateManager.attach(new DetailedProfilerState());
+        viewPort.addProcessor(new TimingProcessor());
+        stateManager.attach(new DetailedProfilerState());
         cam.setFrustumPerspective(50f, cam.getWidth() / (float) cam.getHeight(), 0.1f, WORLD_SIZE * 1.5f);
         flyCam.setMoveSpeed(10f);
 
@@ -173,10 +174,8 @@ public class TestCombined extends SimpleApplication {
         @Member Vector3f scale;
     }
 
-    private class Processor implements SceneProcessor {
-
-        private boolean init = false;
-        private AppProfiler prof;
+    private class TimingProcessor extends TestUtil.NullProcessor {
+  
         private float time = 0f;
 
         private Deque<GpuQuery> pending = new ArrayDeque<>();
@@ -188,21 +187,7 @@ public class TestCombined extends SimpleApplication {
                 return q;
             }
             return new GpuQuery(GpuQuery.Type.SamplesPassed, renderer);
-        }
-
-        @Override
-        public void initialize(RenderManager rm, ViewPort vp) {
-            init = true;
-        }
-
-        @Override
-        public void reshape(ViewPort vp, int w, int h) {
-        }
-
-        @Override
-        public boolean isInitialized() {
-            return init;
-        }
+        } 
 
         @Override
         public void preFrame(float tpf) {
@@ -220,8 +205,8 @@ public class TestCombined extends SimpleApplication {
 
         @Override
         public void postQueue(RenderQueue rq) {
-            if (prof != null) {
-                prof.spStep(SpStep.ProcPostQueue, "Processor", "read queries");
+            if (profiler != null) {
+                profiler.spStep(SpStep.ProcPostQueue, getClass().getSimpleName(), "read queries");
             }
             while (!pending.isEmpty() && pending.peek().isResultAvailable()) {
                 GpuQuery query = pending.poll();
@@ -230,8 +215,8 @@ public class TestCombined extends SimpleApplication {
             }
             text.setText("Samples passed: " + samples);
 
-            if (prof != null) {
-                prof.spStep(SpStep.ProcPostQueue, "Processor", "render quads");
+            if (profiler != null) {
+                profiler.spStep(SpStep.ProcPostQueue, getClass().getSimpleName(), "render quads");
             }
             GpuQuery query = getQuery();
             query.start();
@@ -243,16 +228,7 @@ public class TestCombined extends SimpleApplication {
         @Override
         public void postFrame(FrameBuffer out) {
             //GL13.glActiveTexture(123123123); // remove comment to trigger gl error
-        }
-
-        @Override
-        public void cleanup() {
-        }
-
-        @Override
-        public void setProfiler(AppProfiler profiler) {
-            prof = profiler;
-        }
+        } 
 
     }
 

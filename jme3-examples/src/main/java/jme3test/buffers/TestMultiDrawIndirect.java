@@ -16,13 +16,16 @@ import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
+import com.jme3.profile.SpStep;
 import com.jme3.renderer.Caps;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.VertexBuffer;
+import com.jme3.texture.FrameBuffer;
 import com.jme3.util.BufferUtils;
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 /**
  *
@@ -33,7 +36,7 @@ import java.nio.ByteBuffer;
  *
  * @author Alexander Kasigkeit <alexander.kasigkeit@web.de>
  */
-public class TestMultiDrawIndirect extends SimpleApplication {
+public class TestMultiDrawIndirect extends TestUtil.AutoScreenshotApp {
 
     private static final int MULTI_BUFFERING = 2;
     private static final int NUM_QUADS = 16_000;
@@ -54,6 +57,7 @@ public class TestMultiDrawIndirect extends SimpleApplication {
         if (!renderer.getCaps().contains(Caps.MultiDrawIndirect)) {
             throw new UnsupportedOperationException("Hardware doesnt support MultiDrawIndirect");
         }
+        super.simpleInitApp();
         //create a buffer for the index data
         indexBuffer = UntypedBuffer.createNewStorageDirect(UntypedBuffer.MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
         indexBuffer.initialize(NUM_QUADS * 6 * 4); //6 indices per quad with 2 bytes each (could be shared in this case where all shapes are the same but to not "cheat" here, i upload it once per quad)
@@ -66,7 +70,8 @@ public class TestMultiDrawIndirect extends SimpleApplication {
         VertexBuffer colorVBO = vertexBuffer.asVertexBuffer(VertexBuffer.Type.Color, VertexBuffer.Format.Float, 3, 24, 12);
 
         //now fill them with data
-        generateQuads();
+        Random r = new Random(200419930917L);
+        generateQuads(r);
 
         //prepare the MultiBuffer and per-instance vertex attribues
         //for each quad the world translation is streamed, thats 3 floats per quad
@@ -114,46 +119,68 @@ public class TestMultiDrawIndirect extends SimpleApplication {
 
         //init the positions used to translate all the quads
         for (int i = 0; i < NUM_QUADS; i++) {
-            POSITIONS[i] = new Vector3f((float) (Math.random()), (float) (Math.random()), (float) (Math.random())).multLocal(128).subtractLocal(64, 64, 64);
+            POSITIONS[i] = new Vector3f(r.nextFloat(), r.nextFloat(), r.nextFloat()).multLocal(128).subtractLocal(64, 64, 64);
         }
         stateManager.attach(new DetailedProfilerState());
         flyCam.setMoveSpeed(20f);
         cam.setLocation(new Vector3f(0f, 40f, 200f));
         cam.lookAtDirection(new Vector3f(0f, -0.2f, -0.9f).normalizeLocal(), Vector3f.UNIT_Y);
+         
+        viewPort.addProcessor(new TimingProcessor());
     }
 
     private RingBufferBlock activeBlock;
 
-    @Override
-    public void simpleUpdate(float tpf) {
-        //stream translations
-        activeBlock = streamedData.next();
-        for (int i = 0; i < NUM_QUADS; i++) {
-            Vector3f pos = POSITIONS[i];
-            pos.addLocal(tpf * FastMath.sin(i / 32f), tpf * 3, tpf * FastMath.cos(i / 128f));
-             
-            //ugly wrapping
-            if (pos.x > 64) { pos.x = -64;
-            } else if (pos.x < -64) { pos.x = 64; }
-            if (pos.y > 64) { pos.y = -64;
-            } else if (pos.y < -64) {  pos.y = 64; }
-            if (pos.z > 64) { pos.z = -64;
-            } else if (pos.z < -64) { pos.z = 64; }
+    private class TimingProcessor extends TestUtil.NullProcessor {
+
+        @Override
+        public void preFrame(float tpf) {
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "wait fence");
+            //stream translations
+            activeBlock = streamedData.next();
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "move quads");
+            for (int i = 0; i < NUM_QUADS; i++) {
+                Vector3f pos = POSITIONS[i];
+                pos.addLocal(tpf * FastMath.sin(i / 32f), tpf * 3, tpf * FastMath.cos(i / 128f));
+
+                //ugly wrapping
+                if (pos.x > 64) {
+                    pos.x = -64;
+                } else if (pos.x < -64) {
+                    pos.x = 64;
+                }
+                if (pos.y > 64) {
+                    pos.y = -64;
+                } else if (pos.y < -64) {
+                    pos.y = 64;
+                }
+                if (pos.z > 64) {
+                    pos.z = -64;
+                } else if (pos.z < -64) {
+                    pos.z = 64;
+                } 
+            }
             
-            activeBlock.putFloat(pos.x).putFloat(pos.y).putFloat(pos.z);
+            
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame,getClass().getSimpleName(),  "stream "+((NUM_QUADS * 12) / 1024)+" KB");
+            for (int i = 0; i < NUM_QUADS; i++) {
+                Vector3f pos = POSITIONS[i];
+                activeBlock.putFloat(pos.x).putFloat(pos.y).putFloat(pos.z);
+            }
+
+            //update per-instance vertex buffers 
+            mesh.clearBuffer(VertexBuffer.Type.Translation);
+            mesh.setBuffer(streamedVBO[activeBlock.getIndex()]);
         }
 
-        //update per-instance vertex buffers 
-        mesh.clearBuffer(VertexBuffer.Type.Translation);
-        mesh.setBuffer(streamedVBO[activeBlock.getIndex()]);
-
+        @Override
+        public void postFrame(FrameBuffer out) {
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "put fence");
+            activeBlock.finish();
+        }
     }
 
-    public void postRender() {
-        activeBlock.finish();
-    }
-
-    private void generateQuads() {
+    private void generateQuads(Random r) {
         //again for simplicity, generate and upload all at once instead of doing batches
         //create indices 
         ByteBuffer buffer = BufferUtils.createByteBuffer(NUM_QUADS * 4 * 6 * 4); //big enough for the vertices further down already
@@ -167,10 +194,10 @@ public class TestMultiDrawIndirect extends SimpleApplication {
         buffer.clear();
         for (int i = 0; i < NUM_QUADS; i++) {
             //              X           Y           Z           R           G           B
-            buffer.putFloat(0f).putFloat(0f).putFloat(0f).putFloat((float) Math.random()).putFloat((float) Math.random()).putFloat((float) Math.random()); //ugly bunch of Math random
-            buffer.putFloat(1f).putFloat(0f).putFloat(0f).putFloat((float) Math.random()).putFloat((float) Math.random()).putFloat((float) Math.random());
-            buffer.putFloat(1f).putFloat(1f).putFloat(0f).putFloat((float) Math.random()).putFloat((float) Math.random()).putFloat((float) Math.random());
-            buffer.putFloat(0f).putFloat(1f).putFloat(0f).putFloat((float) Math.random()).putFloat((float) Math.random()).putFloat((float) Math.random());
+            buffer.putFloat(0f).putFloat(0f).putFloat(0f).putFloat(r.nextFloat()).putFloat(r.nextFloat()).putFloat(r.nextFloat()); //ugly bunch of Math random
+            buffer.putFloat(1f).putFloat(0f).putFloat(0f).putFloat(r.nextFloat()).putFloat(r.nextFloat()).putFloat(r.nextFloat());
+            buffer.putFloat(1f).putFloat(1f).putFloat(0f).putFloat(r.nextFloat()).putFloat(r.nextFloat()).putFloat(r.nextFloat());
+            buffer.putFloat(0f).putFloat(1f).putFloat(0f).putFloat(r.nextFloat()).putFloat(r.nextFloat()).putFloat(r.nextFloat());
         }
         buffer.flip();
         vertexBuffer.updateData(buffer, 0);

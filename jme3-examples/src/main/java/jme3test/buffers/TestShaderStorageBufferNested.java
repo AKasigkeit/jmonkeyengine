@@ -34,13 +34,10 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit <alexander.kasigkeit@web.de>
  */
-public class TestShaderStorageBufferNested extends SimpleApplication {
+public class TestShaderStorageBufferNested extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestShaderStorageBufferNested t = new TestShaderStorageBufferNested();
-        AppSettings s = new AppSettings(true);
-        s.setRenderer(AppSettings.LWJGL_OPENGL33);
-        t.setSettings(s);
         t.start();
     }
 
@@ -54,6 +51,7 @@ public class TestShaderStorageBufferNested extends SimpleApplication {
         if (!renderer.getCaps().contains(Caps.ShaderStorageBufferObject)) {
             throw new UnsupportedOperationException("Hardware doesnt support ShaderStorageBuuferObjects");
         }
+        super.simpleInitApp();
         spheres = new Sphere[NUM_SPHERES];
         for (int i = 0; i < NUM_SPHERES; i++) {
             float x = (((i / 8) / 8f) * 20 - 10);
@@ -94,36 +92,25 @@ public class TestShaderStorageBufferNested extends SimpleApplication {
         raytracer.queryLayouts();
         raytracer.getShaderStorageBufferLayout("Spheres").getTreeView().printDebug();
 
-        viewPort.addProcessor(new Processor());
+        viewPort.addProcessor(new TimingProcessor());
         stateManager.attach(new DetailedProfilerState());
     }
 
-    private class Processor implements SceneProcessor {
+    private class TimingProcessor extends TestUtil.NullProcessor {
 
         private MemoryBarrier barrier = null;
-        private boolean init = false;
-        private AppProfiler prof = null;
         float time = 0f;
 
         @Override
         public void initialize(RenderManager rm, ViewPort vp) {
+            super.initialize(rm, vp);
             barrier = rm.getRenderer().createMemoryBarrier(MemoryBarrier.Flag.All);
-            init = true;
-        }
-
-        @Override
-        public void reshape(ViewPort vp, int w, int h) {
-        }
-
-        @Override
-        public boolean isInitialized() {
-            return init;
         }
 
         @Override
         public void preFrame(float tpf) {
-            if (prof != null) {
-                prof.spStep(SpStep.ProcPreFrame, "Processor", "update color");
+            if (profiler != null) {
+                profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "update color");
             }
             time += tpf;
 
@@ -132,32 +119,14 @@ public class TestShaderStorageBufferNested extends SimpleApplication {
                 spheres[i].color.values[2].c = t;
             }
             ssbo.setField("spheres", spheres);
-            if (prof != null) {
-                prof.spStep(SpStep.ProcPreFrame, "Processor", "ray tracing");
+            if (profiler != null) {
+                profiler.spStep(SpStep.ProcPreFrame,getClass().getSimpleName(),  "ray tracing");
             }
             int width = cam.getWidth() / 4;
             int height = cam.getHeight() / 4;
             raytracer.run(width, height, 32, 32, barrier);
 
         }
-
-        @Override
-        public void postQueue(RenderQueue rq) {
-        }
-
-        @Override
-        public void postFrame(FrameBuffer out) {
-        }
-
-        @Override
-        public void cleanup() {
-        }
-
-        @Override
-        public void setProfiler(AppProfiler profiler) {
-            prof = profiler;
-        }
-
     }
 
     private static final String SHADER_SOURCE = ""

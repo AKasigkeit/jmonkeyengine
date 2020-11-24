@@ -15,8 +15,10 @@ import com.jme3.buffer.UntypedBuffer.MemoryMode;
 import com.jme3.buffer.UntypedBuffer.StorageFlag;
 import com.jme3.conditional.GpuQuery;
 import com.jme3.material.Material;
+import com.jme3.math.Vector3f;
 import com.jme3.post.SceneProcessor;
 import com.jme3.profile.AppProfiler;
+import com.jme3.profile.SpStep;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
@@ -28,6 +30,7 @@ import com.jme3.scene.Mesh;
 import com.jme3.scene.shape.Box;
 import com.jme3.texture.FrameBuffer;
 import com.jme3.util.IntMap;
+import java.util.Random;
 
 /**
  *
@@ -37,7 +40,7 @@ import com.jme3.util.IntMap;
  * provided buffer instead of using it as offset
  *
  */
-public class TestQueryBuffer extends SimpleApplication {
+public class TestQueryBuffer extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestQueryBuffer t = new TestQueryBuffer();
@@ -55,6 +58,7 @@ public class TestQueryBuffer extends SimpleApplication {
         if (!renderer.getCaps().contains(Caps.QueryBuffer)) {
             throw new UnsupportedOperationException("Hardware doesnt support QueryBuffers");
         }
+        super.simpleInitApp();
         UntypedBuffer buffer = UntypedBuffer.createNewStorageDirect(MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
         buffer.initialize(NUM_OBJECTS * 4);
         queryBuffer = buffer.asQueryBuffer();
@@ -67,10 +71,10 @@ public class TestQueryBuffer extends SimpleApplication {
         ssbo.setField("samplesPassed", arr);
 
         Mesh mesh = new Box(1f, 1f, 1f);
-
+        Random r = new Random(3513538745L);
         for (int i = 0; i < NUM_OBJECTS; i++) {
             Geometry geo = new Geometry("geo_" + i, mesh);
-            geo.setLocalTranslation((float) (Math.random() * 100 - 50), (float) (Math.random() * 100 - 50), (float) (Math.random() * 100 - 50));
+            geo.setLocalTranslation((r.nextFloat() * 100 - 50), (r.nextFloat() * 100 - 50), (r.nextFloat() * 100 - 50));
             geo.setUserData("ID", Integer.valueOf(i));
 
             Material mat = new Material(assetManager, "jme3test/qbo/QueryBuffer.j3md");
@@ -83,12 +87,13 @@ public class TestQueryBuffer extends SimpleApplication {
             queries.put(i, new GpuQuery(GpuQuery.Type.SamplesPassed, renderer));
             rootNode.attachChild(geo);
         }
+        cam.setLocation(new Vector3f(0f, 0f, 80f));
         viewPort.addProcessor(new QuerySceneProcessor());
         stateManager.attach(new DetailedProfilerState());
         flyCam.setMoveSpeed(20);
     }
 
-    private class QuerySceneProcessor implements SceneProcessor {
+    private class QuerySceneProcessor extends TestUtil.NullProcessor {
 
         private MemoryBarrier mem;
         private IntMap<GpuQuery> queriesMap = new IntMap<>();
@@ -96,14 +101,11 @@ public class TestQueryBuffer extends SimpleApplication {
         private boolean first = true;
 
         @Override
-        public void preFrame(float tpf) {
-        }
-
-        @Override
         public void postQueue(RenderQueue rq) {
             IntMap<GpuQuery> putMap = first ? queriesMap : queriesMapLast;
             IntMap<GpuQuery> getMap = first ? queriesMapLast : queriesMap;
 
+            if (profiler !=  null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "render geometries");
             GeometryList opaque = rq.getList(RenderQueue.Bucket.Opaque);
             putMap.clear();
             for (int i = 0; i < opaque.size(); i++) {
@@ -121,46 +123,23 @@ public class TestQueryBuffer extends SimpleApplication {
                 }
             }
             if (USE_MAP) {
+                if (profiler !=  null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "store query results");
                 for (IntMap.Entry<GpuQuery> e : getMap) {
                     queryBuffer.storeResult(e.getValue(), e.getKey() * 4, false, true);
                 }
             }
 
+            if (profiler !=  null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "memory barrier");
             renderManager.getRenderer().placeMemoryBarrier(mem);
             opaque.clear();
 
             first = !first;
         }
 
-        //DUMMY IMPLEMENTATION STUFF
-        private boolean init = false;
-
         @Override
         public void initialize(RenderManager rm, ViewPort vp) {
+            super.initialize(rm, vp);
             mem = rm.getRenderer().createMemoryBarrier(MemoryBarrier.Flag.All);
-            init = true;
-        }
-
-        @Override
-        public void reshape(ViewPort vp, int w, int h) {
-        }
-
-        @Override
-        public boolean isInitialized() {
-            return init;
-        }
-
-        @Override
-        public void postFrame(FrameBuffer out) {
-        }
-
-        @Override
-        public void cleanup() {
-            init = false;
-        }
-
-        @Override
-        public void setProfiler(AppProfiler profiler) {
         }
 
     }

@@ -20,12 +20,13 @@ import com.jme3.shader.layout.Struct;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
+import java.util.Random;
 
 /**
  *
  * @author Alexander Kasigkeit
  */
-public class TestShaderStorageBuffer extends SimpleApplication {
+public class TestShaderStorageBuffer extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestShaderStorageBuffer t = new TestShaderStorageBuffer();
@@ -39,12 +40,14 @@ public class TestShaderStorageBuffer extends SimpleApplication {
         if (!renderer.getCaps().contains(Caps.ShaderStorageBufferObject)) {
             throw new UnsupportedOperationException("Hardware doesnt support ShaderStorageBuuferObjects");
         }
+        super.simpleInitApp();
         Sphere[] spheres = new Sphere[NUM_SPHERES];
         Vector3f pos = new Vector3f();
+        Random r = new Random(12762983471L);
         for (int i = 0; i < NUM_SPHERES; i++) {
-            pos.setX((float) (Math.random() * 20) - 10);
-            pos.setY((float) (Math.random() * 20) - 10);
-            pos.setZ((float) (Math.random() * 5));
+            pos.setX((r.nextFloat() * 20) - 10);
+            pos.setY((r.nextFloat() * 20) - 10);
+            pos.setZ((r.nextFloat() * 5));
             spheres[i] = new Sphere(pos, 1f);
         }
 

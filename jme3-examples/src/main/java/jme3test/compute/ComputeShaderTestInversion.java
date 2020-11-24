@@ -20,18 +20,16 @@ import com.jme3.system.AppSettings;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
+import jme3test.buffers.TestUtil;
 
 /**
  *
  * @author Alexander Kasigkeit
  */
-public class ComputeShaderTestInversion extends SimpleApplication {
+public class ComputeShaderTestInversion extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         ComputeShaderTestInversion test = new ComputeShaderTestInversion();
-        AppSettings settings = new AppSettings(true);
-        //settings.setRenderer(AppSettings.LWJGL_OPENGL43);
-        test.setSettings(settings);
         test.start();
     }
     
@@ -52,6 +50,7 @@ public class ComputeShaderTestInversion extends SimpleApplication {
             stop();
             return;
         }
+        super.simpleInitApp();
          
 
         Texture orig = assetManager.loadTexture("Textures/Terrain/splat/dirt.jpg");

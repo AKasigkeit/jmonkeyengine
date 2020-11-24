@@ -5,11 +5,13 @@
  */
 package jme3test.buffers;
 
+import com.jme3.app.DetailedProfilerState;
 import com.jme3.app.SimpleApplication;
 import com.jme3.buffer.UniformBuffer;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector2f;
+import com.jme3.profile.SpStep;
 import com.jme3.renderer.Caps;
 import com.jme3.renderer.compute.ComputeShader;
 import com.jme3.renderer.compute.MemoryBarrier;
@@ -26,20 +28,20 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class TestUniformBuffer extends SimpleApplication {
+public class TestUniformBuffer extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestUniformBuffer t = new TestUniformBuffer();
         t.start();
     }
 
-    private MemoryBarrier barrier = null;
+    private MemoryBarrier noBarrier = null;
     private ComputeShader shader = null;
     private float time = 0f;
-    
+
     private UniformBuffer buffer = null;
-    private Vector2f lightPos = new Vector2f(); 
-    
+    private Vector2f lightPos = new Vector2f();
+
     int width, height, localX, localY;
 
     @Override
@@ -47,6 +49,7 @@ public class TestUniformBuffer extends SimpleApplication {
         if (!renderer.getCaps().contains(Caps.ComputeShader)) {
             System.out.println("Hardware does not support ComputeShaders");
         }
+        super.simpleInitApp();
 
         //create texture to write to
         width = 512;
@@ -65,29 +68,36 @@ public class TestUniformBuffer extends SimpleApplication {
         shader.setDefine("LOCAL_SIZE_X", VarType.Int, localX);
         shader.setDefine("LOCAL_SIZE_Y", VarType.Int, localY);
         shader.setImage("Image", VarType.Texture2D, tex, Texture.Access.WriteOnly, 0, -1, true);
-    
+
         buffer = UniformBuffer.createNewAutolayout();
         buffer.setField("light_pos", lightPos);
         buffer.setField("light_color", ColorRGBA.Yellow);
         buffer.setField("light_threshold", 0.4f);
         shader.setUniformBuffer("Light", buffer);
-        
-        barrier = renderer.createMemoryBarrier(MemoryBarrier.Flag.All);
-        
+
+        noBarrier = renderer.createMemoryBarrier();
+        viewPort.addProcessor(new TimingProcessor());
+        stateManager.attach(new DetailedProfilerState());
+
         flyCam.setMoveSpeed(20);
     }
-    
-    @Override
-    public void simpleUpdate(float tpf) {
-        time += tpf * 0.1f;
-        
-        lightPos.setX((float)(Math.sin(System.currentTimeMillis() / 5000.0) + 1.0f) * 0.5f);
-        lightPos.setY((float)(Math.cos(System.currentTimeMillis() / 5000.0) + 1.0f) * 0.5f);
-        buffer.setField("light_pos", lightPos);
-        renderer.placeMemoryBarrier(barrier);
-        shader.run(width, height, localX, localY, barrier);
+
+    private class TimingProcessor extends TestUtil.NullProcessor {
+
+        @Override
+        public void preFrame(float tpf) {
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "update");
+            time += tpf * 0.1f;
+
+            lightPos.setX((float) (Math.sin(System.currentTimeMillis() / 5000.0) + 1.0f) * 0.5f);
+            lightPos.setY((float) (Math.cos(System.currentTimeMillis() / 5000.0) + 1.0f) * 0.5f);
+            buffer.setField("light_pos", lightPos);
+            
+            if (profiler != null) profiler.spStep(SpStep.ProcPreFrame, getClass().getSimpleName(), "compute shader");
+            shader.run(width, height, localX, localY, noBarrier);
+        }
     }
-    
+
     private static final String SHADER_SOURCE = ""
             + "layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;\n"
             + ""

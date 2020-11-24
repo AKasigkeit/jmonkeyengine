@@ -30,7 +30,7 @@ import com.jme3.texture.Texture2D;
  *
  * @author Alexander Kasigkeit
  */
-public class TestAtomicCounterBufferReadBack extends SimpleApplication {
+public class TestAtomicCounterBufferReadBack extends TestUtil.AutoScreenshotApp {
 
     public static void main(String[] args) {
         TestAtomicCounterBufferReadBack t = new TestAtomicCounterBufferReadBack();
@@ -39,6 +39,7 @@ public class TestAtomicCounterBufferReadBack extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
+        super.simpleInitApp();
         UntypedBuffer buffer = UntypedBuffer.createNewStorageDirect(MemoryMode.GpuOnly, renderer, StorageFlag.Dynamic);
         buffer.initialize(4); // 4 bytes = 1 uint
         AtomicCounterBuffer acBuffer = buffer.asAtomicCounterBuffer(0);
