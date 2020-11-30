@@ -14,12 +14,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  *
  * @author Alexander Kasigkeit <alexander.kasigkeit@web.de>
  */
 public class GLCounter implements InvocationHandler {
+    
+    private static final Logger logger = Logger.getLogger(GLCounter.class.getName());
 
     protected Map<String, Integer> counter;
     protected Object obj;
@@ -63,7 +66,8 @@ public class GLCounter implements InvocationHandler {
                 totalCalls += c;
             }
             sb.append("TOTAL:..................................").append(totalCalls);
-            System.out.println(sb.toString());
+            logger.info(sb.toString());
+            //System.out.println(sb.toString());
             
             counter.clear();
         }
