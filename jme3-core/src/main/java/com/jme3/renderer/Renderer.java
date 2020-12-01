@@ -570,6 +570,17 @@ public interface Renderer {
     public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, int offset, int length, UntypedBuffer.MappingFlag... flags);
     
     /**
+     * Maps the specified buffer completly. That is data can be written "directly" to be buffer
+     * using the returned BufferMappingHandle
+     * 
+     * @param buffer the buffer to map
+     * @param read true for read access
+     * @param write true for write access
+     * @return BufferMappingHandle to upload data to gpu
+     */
+    public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, boolean read, boolean write);
+    
+    /**
      * Flushes the specified region of a mapped buffer.
      * 
      * @param mappingHandle the handle of the currently mapped buffer

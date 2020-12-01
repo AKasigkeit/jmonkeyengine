@@ -728,6 +728,11 @@ public class AndroidGL implements GL, GL2, GLES_30, GLExt, GLFbo {
                                     int depth, int format, int type, ByteBuffer data) {
         GLES30.glTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, data);
     }
+    
+    @Override
+    public ByteBuffer glMapBuffer(int i, int a, long length, ByteBuffer old) {
+        throw new UnsupportedOperationException("GLES does not support glMapBuffer, use glMapBufferRange instead");
+    }
 
     @Override
     public boolean glUnmapBuffer(int i) {

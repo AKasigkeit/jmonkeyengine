@@ -633,6 +633,11 @@ public final class LwjglGL implements GL, GL2, GL3, GL4 {
     public void glGetInteger(int pname, int index, IntBuffer params) {
         GL30.glGetInteger(pname, index, params);
     }
+    
+    @Override
+    public ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old) {
+        return GL15.glMapBuffer(target, access, length, old);
+    }
 
     @Override
     public boolean glUnmapBuffer(int target) {

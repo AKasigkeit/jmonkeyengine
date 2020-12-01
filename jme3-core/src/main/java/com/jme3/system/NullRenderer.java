@@ -320,6 +320,11 @@ public class NullRenderer implements Renderer {
     }
 
     @Override
+    public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, boolean read, boolean write) {
+        return null;
+    }
+
+    @Override
     public void flushMappedBuffer(UntypedBuffer.BufferMappingHandle mappingHandle, int offset, int length) { 
     }
 

@@ -4121,10 +4121,36 @@ public final class GLRenderer implements Renderer {
     }
 
     @Override
+    public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, boolean read, boolean write) {     
+        if (buffer.getId() == -1) {
+            throw new RendererException("cannot map buffer that has not yet been created");
+        }
+        if (buffer.isMapped()) {
+            throw new RendererException("this buffer is already mapped");
+        }
+        if (!read && !write) {
+            throw new IllegalArgumentException("at least one of read or write must be true");
+        }
+        
+        bindVertexArrayBuffer(buffer.getId());
+        int access = read ? write ? GL.GL_READ_WRITE : GL.GL_READ_ONLY : GL.GL_WRITE_ONLY;
+        ByteBuffer mappedBuffer = gl2.glMapBuffer(GL.GL_ARRAY_BUFFER, access, buffer.getSizeOnGpu(), null);
+        if (mappedBuffer == null) {
+            throw new RendererException("failed to map buffer");
+        }
+        
+        UntypedBuffer.BufferMappingHandle handle = new UntypedBuffer.BufferMappingHandle(buffer, mappedBuffer, 0, buffer.getSizeOnGpu(), false, false, false);
+        return handle;
+    }
+
+    @Override
     public UntypedBuffer.BufferMappingHandle mapBuffer(UntypedBuffer buffer, int offset, int length, UntypedBuffer.MappingFlag... flags) {     
         if (buffer.getId() == -1) {
             throw new RendererException("cannot map buffer that has not yet been created");
         }  
+        if (buffer.isMapped()) {
+            throw new RendererException("this buffer is already mapped");
+        }
         
         int flagBits = UntypedBuffer.MappingFlag.fromArray(flags);
         bindVertexArrayBuffer(buffer.getId());
@@ -4132,15 +4158,27 @@ public final class GLRenderer implements Renderer {
         if (mappedBuffer == null) {
             throw new RendererException("failed to map buffer");
         }
-      
-        UntypedBuffer.BufferMappingHandle handle = new UntypedBuffer.BufferMappingHandle(buffer, mappedBuffer, offset, length, flagBits);
+        boolean persistent = (flagBits & UntypedBuffer.MappingFlag.Persistent.getGlConstant()) != 0;
+        boolean coherent = (flagBits & UntypedBuffer.MappingFlag.Coherent.getGlConstant()) != 0;
+        boolean explicitFlush = (flagBits & UntypedBuffer.MappingFlag.ExplicitFlush.getGlConstant()) != 0;
+        
+        UntypedBuffer.BufferMappingHandle handle = new UntypedBuffer.BufferMappingHandle(buffer, mappedBuffer, offset, length, explicitFlush, persistent, coherent);
         return handle;
     }
 
     @Override
-    public void flushMappedBuffer(UntypedBuffer.BufferMappingHandle mappingHandle, int offset, int length) { 
+    public void flushMappedBuffer(UntypedBuffer.BufferMappingHandle mappingHandle, int offset, int length) {
+        if (!mappingHandle.isExplicitFlush()) {
+            throw new IllegalStateException("The mapping has not been established with the MappingFlag.Explicit flush and thus cannot explicitly flush");
+        }
         if (mappingHandle.getBuffer().getId() == -1 || !mappingHandle.getBuffer().isMapped()) {
             throw new RendererException("can only flush mapped buffers");
+        }
+        if (offset < 0 || length < 0) {
+            throw new IllegalArgumentException("offset and length cannot be negative");
+        }
+        if (offset + length > mappingHandle.getLength()) {
+            throw new IllegalArgumentException("offset + length exceed the region of this mapped region");
         }
          
         bindVertexArrayBuffer(mappingHandle.getBuffer().getId());
@@ -4154,7 +4192,7 @@ public final class GLRenderer implements Renderer {
         }
         
         bindVertexArrayBuffer(mappingHandle.getBuffer().getId());
-        gl3.glUnmapBuffer(GL.GL_ARRAY_BUFFER);
+        gl2.glUnmapBuffer(GL.GL_ARRAY_BUFFER);
     }
 
     @Override
@@ -4162,6 +4200,10 @@ public final class GLRenderer implements Renderer {
         
         boolean isGpuOnly = buffer.getMemoryMode() == UntypedBuffer.MemoryMode.GpuOnly;
         boolean isStorage = buffer.getStorageAPI() == UntypedBuffer.StorageApi.Storage;
+        
+        if (isStorage && !caps.contains(Caps.BufferStorage)) {
+            throw new RendererException("Hardware doesn't support StorageApi.Storage");
+        }
         
         int bufferId = buffer.getId(); 
         int newBufferId = -1;

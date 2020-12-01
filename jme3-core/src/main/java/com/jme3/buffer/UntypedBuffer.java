@@ -604,19 +604,19 @@ public class UntypedBuffer extends NativeObject {
     public UntypedBuffer getCopyBuffer() {
         return copyBuffer;
     }
-    
+
     public int getCopyDstOffset() {
         return copyDstOffset;
     }
-    
+
     public int getCopySrcOffset() {
         return copySrcOffset;
     }
-    
+
     public int getCopySize() {
         return copySize;
     }
-    
+
     public void clearPendingCopy() {
         copyBuffer = null;
         copySrcOffset = -1;
@@ -833,6 +833,27 @@ public class UntypedBuffer extends NativeObject {
     public boolean isMapped() {
         return mappingHandle != null;
     }
+    
+    public BufferMappingHandle mapBuffer(boolean read, boolean write) {
+        if (mappingHandle != null) {
+            throw new UnsupportedOperationException("this buffer is currently mapped already");
+        }
+        if (!read && !write) {
+            throw new IllegalArgumentException("at least one of read or write must be true");
+        }
+        if (MEM_MODE != MemoryMode.GpuOnly) {
+            throw new UnsupportedOperationException("mapping is only available for GPU-only buffers");
+        }
+        if (!isDirect()) {
+            throw new UnsupportedOperationException("mapping is only available for buffers in direct mode");
+        }
+        if (getStorageAPI() == StorageApi.Storage && (STORAGE_FLAGS & (StorageFlag.MapRead.getGlConstant() | StorageFlag.MapWrite.getGlConstant())) == 0) {
+            throw new UnsupportedOperationException("mapping for buffers with StorageApi.Storage is only available for buffer that have at least MapWrite or MapRead StorageFlags set");
+        }
+
+        mappingHandle = RENDERER.mapBuffer(this, read, write);
+        return mappingHandle;
+    }
 
     /**
      * Only works with Gpu-Only buffer. Maps the entire buffer
@@ -865,11 +886,8 @@ public class UntypedBuffer extends NativeObject {
         if (!isDirect()) {
             throw new UnsupportedOperationException("mapping is only available for buffers in direct mode");
         }
-        if (getStorageAPI() != StorageApi.Storage) {
-            throw new UnsupportedOperationException("mapping is only available for buffers using StorageApi.Storage");
-        }
-        if ((STORAGE_FLAGS & (StorageFlag.MapRead.getGlConstant() | StorageFlag.MapWrite.getGlConstant())) == 0) {
-            throw new UnsupportedOperationException("mapping is only available for buffer that have at least MapWrite or MapRead StorageFlags set");
+        if (getStorageAPI() == StorageApi.Storage && (STORAGE_FLAGS & (StorageFlag.MapRead.getGlConstant() | StorageFlag.MapWrite.getGlConstant())) == 0) {
+            throw new UnsupportedOperationException("mapping for buffers with StorageApi.Storage is only available for buffer that have at least MapWrite or MapRead StorageFlags set");
         }
 
         int flagBits = MappingFlag.fromArray(flags);
@@ -877,6 +895,9 @@ public class UntypedBuffer extends NativeObject {
         boolean isCoherent = (flagBits & MappingFlag.Coherent.getGlConstant()) != 0;
         boolean isRead = (flagBits & MappingFlag.Read.getGlConstant()) != 0;
         boolean isWrite = (flagBits & MappingFlag.Write.getGlConstant()) != 0;
+        if (isPersistent && getStorageAPI() != StorageApi.Storage) {
+            throw new IllegalArgumentException("persistent mapping of buffers is only available for buffers created with StorageApi.Storage");
+        }
         if (isPersistent && !(isRead || isWrite)) {
             throw new IllegalArgumentException("cannot set MappingFlag.Persistent without also setting MappingFlag.Read or MappingFlag.Write");
         }
@@ -896,17 +917,19 @@ public class UntypedBuffer extends NativeObject {
 
     public static class BufferMappingHandle {
 
-        private final int flags;
         private final UntypedBuffer untypedBuffer;
         private final ByteBuffer buffer;
         private final int offset, length;
+        private final boolean isExplicitFlush, isPersistent, isCoherent;
 
-        public BufferMappingHandle(UntypedBuffer untypedBuffer, ByteBuffer directBuffer, int offset, int length, int mappingFlags) {
+        public BufferMappingHandle(UntypedBuffer untypedBuffer, ByteBuffer directBuffer, int offset, int length, boolean isExplicitFlush, boolean isPersistent, boolean isCoherent) {
             this.untypedBuffer = untypedBuffer;
             this.offset = offset;
             this.length = length;
             this.buffer = directBuffer;
-            this.flags = mappingFlags;
+            this.isCoherent = isCoherent;
+            this.isExplicitFlush = isExplicitFlush;
+            this.isPersistent = isPersistent;
         }
 
         /**
@@ -917,7 +940,7 @@ public class UntypedBuffer extends NativeObject {
          * memoryBarrier(ClientMappedBuffers) call is necessary
          */
         public void flush() {
-            flush(offset, length);
+            flush(0, length);
         }
 
         /**
@@ -932,9 +955,6 @@ public class UntypedBuffer extends NativeObject {
          * @param length length in bytes to start flushing
          */
         public void flush(int offset, int length) {
-            if ((flags & MappingFlag.ExplicitFlush.getGlConstant()) == 0) {
-                throw new IllegalStateException("The mapping has not been established with the MappingFlag.Explicit flush and thus cannot explicitly flush");
-            }
             untypedBuffer.RENDERER.flushMappedBuffer(this, offset, length);
         }
 
@@ -963,6 +983,48 @@ public class UntypedBuffer extends NativeObject {
         public void unmap() {
             untypedBuffer.RENDERER.unmapBuffer(this);
             untypedBuffer.mappingHandle = null;
+        }
+
+        /**
+         * Returns true if this mapping has been created with the persistent
+         * flag
+         *
+         */
+        public boolean isPersistent() {
+            return isPersistent;
+        }
+
+        /**
+         * Returns true if this mapping has been created with the coherent flag
+         *
+         */
+        public boolean isCoherent() {
+            return isCoherent;
+        }
+
+        /**
+         * Returns true if this mapping has been created with the explicit flush
+         * flag
+         *
+         */
+        public boolean isExplicitFlush() {
+            return isExplicitFlush;
+        }
+
+        /**
+         * Returns the offset of this mapped region
+         *
+         */
+        public int getOffset() {
+            return offset;
+        }
+
+        /**
+         * Returns the length in bytes of this mapped region
+         *
+         */
+        public int getLength() {
+            return length;
         }
     }
 

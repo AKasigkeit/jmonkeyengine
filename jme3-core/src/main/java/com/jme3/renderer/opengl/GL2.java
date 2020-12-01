@@ -207,6 +207,16 @@ public interface GL2 extends GL {
                                 int depth, int format, int type, ByteBuffer data);
     
     /**
+     * Maps the buffer bound to the specified target
+     * @param target the target to map
+     * @param access access bits
+     * @param length length of the buffer
+     * @param old_buffer old buffer
+     * @return new buffer
+     */
+    public ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer);
+    
+    /**
      * Unmaps the buffer bound to the specified target
      * 
      * @param target the target to unmap
