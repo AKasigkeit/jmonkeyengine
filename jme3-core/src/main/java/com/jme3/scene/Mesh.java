@@ -199,6 +199,11 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
     private int[] elementLengths;
     private int[] modeStart;
     
+    private int drawOffset = 0;
+    private int drawStart = 0;
+    private int drawEnd = 0;
+    private int drawCount = 0;
+    
     private DrawIndirectBuffer drawIndirectBuffer = null;
     private long drawIndirectOffset = 0L;
     private int drawIndirectCount = 0;
@@ -290,6 +295,20 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
             clone.vertCount = vertCount;
             clone.elementCount = elementCount;
             clone.instanceCount = instanceCount;
+            
+            clone.drawIndirectBuffer = drawIndirectBuffer;
+            clone.drawIndirectCount = drawIndirectCount;
+            clone.drawIndirectOffset = drawIndirectOffset;
+            clone.drawIndirectStride = drawIndirectStride;
+            
+            clone.parameterBuffer = parameterBuffer;
+            clone.parameterOffset = parameterOffset;
+            clone.parameterMaxCount = parameterMaxCount;
+            
+            clone.drawStart = drawStart;
+            clone.drawEnd = drawEnd;
+            clone.drawCount = drawCount;
+            clone.drawOffset = drawOffset;
 
             // although this could change
             // if the bone weight/index buffers are modified
@@ -537,64 +556,237 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
         }
     }
     
+    /**
+     * Sets the offset for drawing this mesh. If this mesh is using instancing, or
+     * if this mesh is using a VertexBuffer of Type.Index, this is the offset into
+     * the index buffer. If this mesh is NOT using such index buffer, this is the
+     * offset into the VertexBuffers.
+     * 
+     * @param offset the draw offset (default: 0)
+     */
+    public void setDrawOffset(int offset) {
+        drawOffset = offset;
+    }
+    
+    /**
+     * Sets the draw start for drawing this mesh. Only used if this mesh is using
+     * a VertexBuffer of Type.Index. Sets the minimum index value that will be read 
+     * from the index buffer. This is NOT the index into the index buffer, instead it
+     * refers to the value that is read from the buffer. 
+     * 
+     * @param start start value for the draw command (default: 0)
+     */
+    public void setDrawStart(int start) {
+        drawStart = start;
+    }
+    
+    /**
+     * Sets the draw end for drawing this mesh. Only used if this mesh is using
+     * a VertexBuffer of Type.Index. Sets the maximum index value that will be read 
+     * from the index buffer. This is NOT the index into the index buffer, instead it
+     * refers to the value that is read from the buffer. 
+     * 
+     * @param end end value for the draw command (default: same as vertexCount)
+     */
+    public void setDrawEnd(int end) {
+        drawEnd = end;
+    }
+    
+    /**
+     * Sets the draw count for drawing this mesh. Only used if this mesh is using
+     * a VertexBuffer of Type.Index. Sets the amount of indices that will be read from
+     * the index buffer when drawing
+     * 
+     * @param count amount of indices for the draw command (default: num indices in index buffer)
+     */
+    public void setDrawCount(int count) {
+        drawCount = count;
+    }
+    
+    /**
+     * Returns the draw offset for this mesh. 
+     */
+    public int getDrawOffset() {
+        return drawOffset;
+    }
+    
+    /**
+     * Returns the draw start for this mesh. 
+     */
+    public int getDrawStart() {
+        return drawStart;
+    }
+    
+    /**
+     * Returns the draw end for this mesh. 
+     */
+    public int getDrawEnd() {
+        return drawEnd;
+    }
+    
+    /**
+     * Returns the draw count for this mesh. 
+     */
+    public int getDrawCount()  {
+        return drawCount;
+    }
+    
+    /**
+     * Returns true if this mesh sources its draw command information from a DrawIndirectBuffer.
+     * 
+     * @return true if this mesh sources its draw command information from a DrawIndirectBuffer.
+     */
     public boolean isDrawIndirect() {
         return drawIndirectBuffer != null;
     }
     
+    /**
+     * Removes the DrawIndirectBuffer in case any is currently attached
+     */
     public void removeDrawIndirectBuffer() {
         drawIndirectBuffer = null;
     }
     
+    /**
+     * Sets this mesh to source it draw command information from the provided DrawIndirectBuffer.
+     * 
+     * @param buffer the buffer to source the draw command from
+     */
     public void setDrawIndirectBuffer(DrawIndirectBuffer buffer) {
         drawIndirectBuffer = buffer;
     }
     
+    /**
+     * In case this mesh sources its draw command from a DrawIndirectBuffer, sets up
+     * the offset, stride and drawCommandCount used to fetch the required draw commands
+     * from the DrawIndirectBuffer.
+     * 
+     * @param offset offset into the buffer (in bytes)
+     * @param stride stride between 2 draw commands (specify 0 for tightly packed, preferred)
+     * @param cmdCount amount of draw commands to fetch from the DrawIndirectBuffer
+     */
     public void setDrawIndirectParameters(long offset, int stride, int cmdCount) {
         drawIndirectOffset = offset;
         drawIndirectStride = stride;
         drawIndirectCount = cmdCount;
     }
     
+    /**
+     * Returns the DrawIndirectBuffer this mesh sources its draw command information
+     * from or null in case there is none.
+     * 
+     * @return the DrawIndirectBuffer this mesh sources its draw command from
+     */
     public DrawIndirectBuffer getDrawIndirectBuffer() {
         return drawIndirectBuffer;
     }
     
+    /**
+     * Returns the offset into the DrawIndirectBuffer to start fetching draw commands.
+     * 
+     * @return offset into the DrawIndirectBuffer
+     */
     public long getDrawIndirectOffset() {
         return drawIndirectOffset;
     }
     
+    /**
+     * Returns the stride between 2 draw commands in the DrawIndirectBuffer.
+     * 
+     * @return the stride between 2 draw commands
+     */
     public int getDrawIndirectStride() {
         return drawIndirectStride;
     }
     
+    /**
+     * Returns the amount of draw commands to fetch from the DrawIndirectBuffer.
+     * 
+     * @return amount of draw commands
+     */
     public int getDrawIndirectCount() {
         return drawIndirectCount;
     }
     
+    /**
+     * Returns true in case this mesh was setup to fetch its draw command count
+     * from a buffer instead of using the value returned by getDrawIndirectCount()
+     * 
+     * @return true if this mesh uses a ParameterBuffer
+     */
     public boolean hasDrawParameterBuffer() {
         return parameterBuffer != null;
     }
     
+    /**
+     * Removes the ParameterBuffer from this mesh in case the mesh is currently setup
+     * to fetch its draw command count from a ParameterBuffer
+     */
+    public void removeParameterBuffer() {
+        parameterBuffer = null;
+    }
+    
+    /**
+     * Sets the ParameterBuffer to fetch the draw command count from when using a
+     * DrawIndirectBuffer to fetch the draw command information
+     * 
+     * @param buffer the ParameterBuffer to source the draw command count from
+     */
     public void setDrawParameterBuffer(ParameterBuffer buffer) {
         parameterBuffer = buffer;
     }
     
+    /**
+     * In case this mesh is setup to source the draw command count from a buffer,
+     * specifies the offset in bytes into the ParameterBuffer to source the draw command
+     * count from.
+     * 
+     * @param offset offset into the ParameterBuffer (in bytes)
+     */
     public void setDrawParametersOffset(long offset) {
         parameterOffset = offset;
     }
     
+    /**
+     * In case this mesh is setup to source the draw command count from a buffer,
+     * specified the maximum amount of draw commands to render (ie if the draw command
+     * count sourced from the buffer is greater than the specified value, the specified value
+     * is used instead)
+     * 
+     * @param count maximum number of draw commands to render when using a ParameterBuffer
+     */
     public void setDrawParametersMaxCount(int count) {
         parameterMaxCount = count;
     }
     
+    /**
+     * Returns the ParameterBuffer this mesh fetches it draw command count from or
+     * null in case it does not.
+     * 
+     * @return the ParameterBuffer this mesh fetches it draw command count from
+     */
     public ParameterBuffer getDrawParameterBuffer() {
         return parameterBuffer;
     }
      
+    /**
+     * Returns the offset into the ParameterBuffer in case this mesh is setup to fetch
+     * its draw command information from a DrawIndirectBuffer and sources the draw command
+     * count from a ParameterBuffer. 
+     * 
+     * @return the offset into the ParameterBuffer
+     */
     public long getDrawParameterOffset() {
         return parameterOffset;
     }
     
+    /**
+     * Returns the maximum amount of draw commands in case this mesh is setup to fetch
+     * its draw command information from a DrawIndirectBuffer and sources the draw command
+     * count from a ParameterBuffer. 
+     * 
+     * @return the maximum amount of draw commands (caps the ParameterBuffer's value)
+     */
     public int getDrawParameterMaxCount() {
         return parameterMaxCount;
     }
@@ -941,18 +1133,25 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
             //}
         }
         if (ib != null) {
-            int numIndices;
-            if (ib.isViewOnUntypedBuffer()) {
-                int stride = ib.getStride() != 0 ? ib.getStride() : ib.getFormat().getComponentSize();
-                numIndices = ib.getUnderlyingBuffer().getSizeOnGpu() / stride;
-            } else {
-                numIndices = ib.getData().limit();
-            } 
-            elementCount = computeNumElements(numIndices);
+            elementCount = computeNumElements(getNumIndices(ib));
         } else {
             elementCount = computeNumElements(vertCount);
         }
         instanceCount = computeInstanceCount();
+        
+        drawStart = 0;
+        drawEnd = vertCount;
+        drawCount = ib == null? vertCount : getNumIndices(ib);
+        drawOffset = 0;
+    }
+    
+    private int getNumIndices(VertexBuffer ibo) {
+        if (ibo.isViewOnUntypedBuffer()) {
+            return ibo.getUnderlyingBuffer().getSizeOnGpu() / 
+                    (ibo.getStride() != 0 ? ibo.getStride() : ibo.getFormat().getComponentSize());
+        } else {
+            return ibo.getData().limit();
+        } 
     }
 
     /**
@@ -971,7 +1170,7 @@ public class Mesh extends NativeObject implements Savable, Cloneable, JmeCloneab
                 throw new IllegalArgumentException("LOD level " + lod + " does not exist!");
             }
 
-            return computeNumElements(lodLevels[lod].getData().limit());
+            return computeNumElements(getNumIndices(lodLevels[lod]));
         } else if (lod == 0) {
             return elementCount;
         } else {

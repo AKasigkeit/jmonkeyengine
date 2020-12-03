@@ -3361,10 +3361,10 @@ public final class GLRenderer implements Renderer {
         } else {
             boolean useInstancing = count > 1 && caps.contains(Caps.MeshInstancing);
             if (useInstancing) {
-                glext.glDrawArraysInstancedARB(convertElementMode(mode), 0,
+                glext.glDrawArraysInstancedARB(convertElementMode(mode), mesh.getDrawOffset(),
                         vertCount, count);
             } else {
-                gl.glDrawArrays(convertElementMode(mode), 0, vertCount);
+                gl.glDrawArrays(convertElementMode(mode), mesh.getDrawOffset(), vertCount);
             }
         }
     }
@@ -3471,26 +3471,33 @@ public final class GLRenderer implements Renderer {
             if (indirect != null) {
                 setBuffer(null, indirect);   
                 if (params == null) {
-                    gl4.glMultiDrawElementsIndirect(convertElementMode(mesh.getMode()), convertFormat(indexBuf.getFormat()), 
-                            mesh.getDrawIndirectOffset(), mesh.getDrawIndirectCount(), mesh.getDrawIndirectStride());
+                    gl4.glMultiDrawElementsIndirect(convertElementMode(mesh.getMode()), 
+                            convertFormat(indexBuf.getFormat()), 
+                            mesh.getDrawIndirectOffset(), 
+                            mesh.getDrawIndirectCount(), 
+                            mesh.getDrawIndirectStride());
                 } else { 
                     setBuffer(null, params);
-                    glip.glMultiDrawElementsIndirectCount(convertElementMode(mesh.getMode()), convertFormat(indexBuf.getFormat()), 
-                            mesh.getDrawIndirectOffset(), mesh.getDrawParameterOffset(), mesh.getDrawParameterMaxCount(), mesh.getDrawIndirectStride()); 
+                    glip.glMultiDrawElementsIndirectCount(convertElementMode(mesh.getMode()), 
+                            convertFormat(indexBuf.getFormat()), 
+                            mesh.getDrawIndirectOffset(), 
+                            mesh.getDrawParameterOffset(), 
+                            mesh.getDrawParameterMaxCount(), 
+                            mesh.getDrawIndirectStride()); 
                 }
             } else if (useInstancing) {
                 glext.glDrawElementsInstancedARB(convertElementMode(mesh.getMode()),
-                        indexBuf.getData().limit(),
+                        mesh.getDrawCount(),
                         convertFormat(indexBuf.getFormat()),
-                        0,
+                        mesh.getDrawOffset(),
                         count);
             } else {
-                gl.glDrawRangeElements(convertElementMode(mesh.getMode()),
-                        0,
-                        vertCount,
-                        indexBuf.getData().limit(),
-                        convertFormat(indexBuf.getFormat()),
-                        0);
+                gl.glDrawRangeElements(convertElementMode(mesh.getMode()), //mode
+                        mesh.getDrawStart(),                               //start
+                        mesh.getDrawEnd(),                                 //end
+                        mesh.getDrawCount(),                               //count
+                        convertFormat(indexBuf.getFormat()),               //format
+                        mesh.getDrawOffset());                             //indices
             }
         }
     }
@@ -3860,7 +3867,7 @@ public final class GLRenderer implements Renderer {
     @Override
     public long getProfilingTime(int taskId) {
         if (context.boundQboUnit != 0) {
-            gl.glBindBuffer(gl4.GL_QUERY_BUFFER, 0);
+            gl.glBindBuffer(GL4.GL_QUERY_BUFFER, 0);
             context.boundQboUnit = 0;
         }
         return gl.glGetQueryObjectui64(taskId, GL.GL_QUERY_RESULT);
@@ -3869,7 +3876,7 @@ public final class GLRenderer implements Renderer {
     @Override
     public boolean isTaskResultAvailable(int taskId) {
         if (context.boundQboUnit != 0) {
-            gl.glBindBuffer(gl4.GL_QUERY_BUFFER, 0);
+            gl.glBindBuffer(GL4.GL_QUERY_BUFFER, 0);
             context.boundQboUnit = 0;
         }
         return gl.glGetQueryObjectiv(taskId, GL.GL_QUERY_RESULT_AVAILABLE) == 1;
@@ -3941,9 +3948,9 @@ public final class GLRenderer implements Renderer {
             if (m.isSampler()) {
                 unit = setTexture(tex);
             } else {
-                if (tex.getImage().getId() == -1) {
-                    setTexture(tex);
-                } 
+                //if (tex.getImage().getId() == -1) {
+                //    setTexture(tex);
+                //} 
                 unit = setImage(tex, m.getLayer(), m.getLevel(), m.getAccess());
             }
             m.setImageBindingPoint(unit);
